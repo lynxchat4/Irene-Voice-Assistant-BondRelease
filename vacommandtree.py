@@ -4,7 +4,7 @@ T = TypeVar('T')
 
 TSrc = TypeVar('TSrc')
 
-# TSrcDict = dict[str, Union['TSrcDict', TSrc]]
+# TSrcDict = dict[str, Union['TSrcDict', TSrc]] # пока не поддерживается в mypy
 TSrcDict = dict[str, Union[Any, TSrc]]
 
 TConstructor = Callable[[TSrc], T]
