@@ -1,7 +1,7 @@
 from inspect import isgenerator
-from typing import Optional, Callable, Generator, Any, TypeVar
+from typing import Optional, Callable, Any, TypeVar, Collection
 
-from vaabstract import VAContext, VAApi, VAContextSource
+from vaabstract import VAContext, VAApi, VAContextSource, VAContextGenerator
 from vacommandtree import VACommandTree
 
 
@@ -45,7 +45,7 @@ class FunctionContextWithArgs(VAContext):
         self._fn = fn
         self._arg = arg
 
-    def handle_command(self, va: VAApi, text: str) -> Optional['VAContext']:
+    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
         return _context_from_function_return(self._fn(va, text, self._arg), va)
 
     def __str__(self):
@@ -60,9 +60,37 @@ class ContextTimeoutException(Exception):
 
 
 class GeneratorContext(VAContext):
+    """
+    Контекст, поведение которого определяется генератором.
+    FunctionContext и FunctionContextWithArgs создают такой контекст когда функция возвращает генератор.
+
+    Новые полученные команды отправляются генератору через метод send(), значения, сгенерированные генератором
+    воспринимаются как реплики ассистента.
+
+    def play_game(va: VAApi, phrase: str) -> VAContextGenerator:
+        # yield со значением - произносит фразу и ожидает ответа
+        phrase = yield "Скажи правила или начать"
+
+        while True:
+            match phrase:
+                case "отмена":
+                    # return со значением завершает диалог
+                    return "Поняла, играть не будем"
+                case "правила":
+                    phrase = yield "Правила игры. Я загадываю число ... блаблабла"
+                case "начать" | "повторить":
+                    try:
+                        ...
+                    except ContextTimeoutException:
+                        # yield кидает ContextTimeoutException когда пользователь не отвечает слишком долго
+                        phrase = yield "Ты слишком долго думал." \
+                            "Засчитываю техническое поражение. Скажи повторить чтобы начать снова."
+                case _:
+                    phrase = yield "Не поняла..."
+    """
     __slots__ = ['_gen']
 
-    def __init__(self, generator: Generator[str, str, str]):
+    def __init__(self, generator: VAContextGenerator):
         self._gen = generator
 
     @staticmethod
@@ -114,6 +142,8 @@ class GeneratorContext(VAContext):
 
 
 class CommandTreeContext(VAContext):
+    __slots__ = ['_tree']
+
     def __init__(self, tree: VACommandTree):
         self._tree = tree
 
@@ -121,6 +151,38 @@ class CommandTreeContext(VAContext):
         ctx, arg = self._tree.get_command(text)
 
         return ctx.handle_command(va, arg)
+
+
+class TriggerPhraseContext(VAContext):
+    """
+    Контекст, ожидающий появления во входящем потоке ключевой фразы (имени ассистента) и передающий управление
+    следующему контексту при его обнаружении.
+    """
+    __slots__ = ['_phrases', '_next_context']
+
+    def __init__(self, phrases: Collection[Collection[str]], next_context: VAContext):
+        """
+        Args:
+            phrases: набор ключевых фраз. Каждая фраза представлена как коллекция слов.
+            next_context: контекст, которому нужно передать управление в случае обнаружения ключевой фразы.
+                Остаток фразы будет передан в метод handle_command этого контекста.
+        """
+        self._phrases = phrases
+        self._next_context = next_context
+
+    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
+        words = text.split(' ')
+
+        while len(words) > 0:
+            for phrase in self._phrases:
+                if words[:len(phrase)] == phrase:
+                    rest_text = ' '.join(words[len(phrase):])
+
+                    return self._next_context.handle_command(va, rest_text)
+
+            words = words[1:]
+
+        return None
 
 
 def construct_context(src: VAContextSource) -> VAContext:

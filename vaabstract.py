@@ -76,12 +76,14 @@ T = TypeVar('T')
 # VAContextSourcesDict = dict[str, 'VAContextSource'] # пока не поддерживается в mypy
 VAContextSourcesDict = dict[str, Any]
 
+VAContextGenerator = Generator[Optional[str], str, Optional[str]]
+
 VAContextSource = Union[
     VAContext,
     Callable[[VAApi, str], None],
-    Callable[[VAApi, str], Generator[str, str, str]],
+    Callable[[VAApi, str], VAContextGenerator],
     tuple[Callable[[VAApi, str, T], None], T],
-    tuple[Callable[[VAApi, str, T], Generator[str, str, str]], T],
+    tuple[Callable[[VAApi, str, T], VAContextGenerator], T],
     VAContextSourcesDict,
 ]
 

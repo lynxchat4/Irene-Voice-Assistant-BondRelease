@@ -60,7 +60,7 @@ class VAContextManager:
 
         self._current_context = ctx
 
-        #
+        # не начинать отсчёт времени ожидания до вызова start_timeout
         self._timeout = float_info.max
 
     def process_command(self, text: str):

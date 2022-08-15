@@ -1,40 +1,19 @@
 import unittest
-from typing import Optional
 from unittest.mock import Mock
 
-from vaabstract import VAContext, VAApi
+from test_utuls import VAContextMock
+from vaabstract import VAApi
 from vacontextmanager import VAContextManager
-
-
-class _TestContext(VAContext):
-    def __init__(self):
-        self.timeout_context: Optional[VAContext] = None
-        self.cmd_contexts: dict[str, VAContext] = {}
-        self.timeout = None
-
-        self.handle_command = Mock(wraps=self.handle_command)
-        self.handle_timeout = Mock(wraps=self.handle_timeout)
-
-    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
-        return self.cmd_contexts.get(text)
-
-    def handle_timeout(self, va: VAApi) -> Optional[VAContext]:
-        return self.timeout_context
-
-    def get_timeout(self, default: float) -> float:
-        if self.timeout is None:
-            return default
-        return self.timeout
 
 
 class VAContextManagerTest(unittest.TestCase):
     def setUp(self):
-        self.hi_to_ctx = _TestContext()
+        self.hi_to_ctx = VAContextMock()
 
-        self.hi_ctx = _TestContext()
+        self.hi_ctx = VAContextMock()
         self.hi_ctx.timeout_context = self.hi_to_ctx
 
-        self.default_ctx = _TestContext()
+        self.default_ctx = VAContextMock()
 
         self.default_ctx.cmd_contexts["привет"] = self.hi_ctx
 
