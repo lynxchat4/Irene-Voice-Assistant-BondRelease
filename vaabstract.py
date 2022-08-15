@@ -22,6 +22,9 @@ class VAApi(metaclass=ABCMeta):
         """
         ...
 
+    def play_voice_assistant_speech(self, text: str):
+        return self.say(text)
+
 
 class VAContext(metaclass=ABCMeta):
     """
