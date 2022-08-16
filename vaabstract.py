@@ -1,7 +1,16 @@
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Union, Callable, Generator, TypeVar, Any
 
-__all__ = ['VAApi', 'VAContext', 'VAContextSource', 'VAContextSourcesDict', 'VAContextConstructor']
+__all__ = [
+    'VAApi',
+    'VAContext',
+    'VAContextSource',
+    'VAContextGenerator',
+    'VAContextSourcesDict',
+    'VAContextConstructor',
+    'VAActiveInteraction',
+    'VAActiveInteractionSource',
+]
 
 
 class VAApi(metaclass=ABCMeta):
@@ -15,7 +24,10 @@ class VAApi(metaclass=ABCMeta):
         Воспроизводит переданную фразу через основной канал вывода.
 
         Блокирует выполнение до завершения воспроизведения.
-        TODO: (но это не точно)
+
+        Может быть вызван только из обработчиков контекста (``VAContext.handle_*``) и во взаимодействиях
+        (``VAActiveInteraction.act``).
+        При вызове из других мест - поведение не определено.
 
         Args:
             text: текст фразы
@@ -24,6 +36,71 @@ class VAApi(metaclass=ABCMeta):
 
     def play_voice_assistant_speech(self, text: str):
         return self.say(text)
+
+    @abstractmethod
+    def play_audio(self, file_path: str):
+        """
+        Воспроизводит аудио-файл.
+
+        Блокирует выполнение до завершения воспроизведения.
+
+        Может быть вызван только из обработчиков контекста (VAContext.handle_*) и во взаимодействиях
+        (VAActiveInteraction.act).
+        При вызове из других мест - поведение не определено.
+
+        Args:
+            file_path: путь к файлу
+        """
+        ...
+
+    @abstractmethod
+    def submit_active_interaction(self, interaction: 'VAActiveInteractionSource'):
+        """
+        Начинает активное взаимодействие.
+
+        Args:
+            interaction:
+        """
+        ...
+
+
+class TTS(metaclass=ABCMeta):
+    """
+    Фасад для сервиса преобразования текста в речь (TTS, Text To Speech).
+    """
+
+    @abstractmethod
+    def say(self, text: str):
+        """
+        Озвучивает заданный текст.
+
+        Блокирует выполнение до завершения воспроизведения.
+
+        Args:
+            text: текст, который нужно воспроизвести
+        """
+        ...
+
+
+class AudioFilePlayer(metaclass=ABCMeta):
+    """
+    Фасад для сервиса, воспроизводящего аудио-файлы.
+
+    Используется для воспроизведения неречевых звуков (например, сигналов таймера) а так же может использоваться
+    некоторыми реализациями TTS для воспроизведения синтезированной речи.
+    """
+
+    @abstractmethod
+    def play(self, file_path: str):
+        """
+        Воспроизводит звук из заданного файла.
+
+        Блокирует выполнение до окончания воспроизведения.
+
+        Args:
+            file_path: путь к аудио-файлу
+        """
+        ...
 
 
 class VAContext(metaclass=ABCMeta):
@@ -73,6 +150,29 @@ class VAContext(metaclass=ABCMeta):
         """
         return default
 
+    def handle_interrupt(self, va: VAApi) -> Optional['VAContext']:
+        """
+        Вызывается при прерывании диалога.
+
+        Args:
+            va:
+
+        Returns: контекст, который будет использоваться при продолжении диалога или None если диалог должен быть
+                 завершён
+        """
+        return self
+
+    def handle_restore(self, va: VAApi) -> Optional['VAContext']:
+        """
+        Вызывается при продолжении диалога после прерывания.
+
+        Args:
+            va:
+
+        Returns: контекст, который должен использоваться далее или None если диалог завершён
+        """
+        return self
+
 
 T = TypeVar('T')
 
@@ -91,3 +191,47 @@ VAContextSource = Union[
 ]
 
 VAContextConstructor = Callable[[VAContextSource], VAContext]
+
+
+class VAActiveInteraction(metaclass=ABCMeta):
+    """
+    Взаимодействие, осуществляемое "по инициативе" ассистента.
+
+    Например, сообщение о том, что сработал таймер.
+
+    Может начать новый диалог, по завершение которого, ассистент вернётся к текущему диалогу. Например:
+
+    > блаблабла
+
+    < блаблаблабла
+
+        < Тебе пришло новое письмо # VAActiveInteraction прерывает изначальный диалог
+
+        > Прочитай
+
+        < блаблабла (текст письма)
+
+        > это спам
+
+        < письмо отмечено как спам
+
+    > блаблабал # продолжение изначального диалога
+    """
+
+    @abstractmethod
+    def act(self, va: VAApi) -> Optional[VAContext]:
+        """
+        Осуществляет взаимодействие.
+
+        Args:
+            va:
+
+        Returns: контекст нового диалога или None если начинать новый диалог не нужно
+        """
+        ...
+
+
+VAActiveInteractionSource = Union[
+    VAActiveInteraction,
+    Callable[[VAApi], Optional[VAContextGenerator]],
+]

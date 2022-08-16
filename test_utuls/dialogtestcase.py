@@ -1,14 +1,24 @@
 import re
+from os.path import abspath
 from re import Pattern
 from typing import Optional, Union, Any
 from unittest import TestCase
 
-from vaabstract import VAApi, VAContextSource
+from vaabstract import VAApi, VAContextSource, VAActiveInteractionSource
+from vaactiveinteraction import construct_active_interaction
 from vacontext import construct_context
 from vacontextmanager import VAContextManager
 
 
 class _VAApiStub(VAApi):
+    ctx_manager: VAContextManager
+
+    def play_audio(self, file_path: str):
+        self.say(f'[play {abspath(file_path)}]')
+
+    def submit_active_interaction(self, interaction: VAActiveInteractionSource):
+        self.ctx_manager.process_active_interaction(construct_active_interaction(interaction))
+
     def __init__(self):
         self._output_log = ''
 
@@ -30,6 +40,7 @@ class DialogTestCase(TestCase):
 
     def using_context(self, ctx: VAContextSource):
         self.ctx_manager = VAContextManager(self.va, construct_context(ctx))
+        self.va.ctx_manager = self.ctx_manager
         self.va.pull_output()
 
     def say(self, text: str):

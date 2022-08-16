@@ -1,10 +1,11 @@
 import logging
 from sys import float_info
-from threading import Thread, RLock
+from threading import Thread, Lock
 from time import sleep
 from typing import Optional
 
-from vaabstract import VAApi, VAContext
+from vaabstract import VAApi, VAContext, VAActiveInteraction
+from vacontext import InterruptContext
 
 _DEFAULT_TIMEOUT = 10.0
 _DEFAULT_TICK_INTERVAL = 1.0
@@ -33,7 +34,7 @@ class VAContextManager:
         self._next_context: Optional[VAContext] = None
         self.default_timeout = default_timeout
         self._timeout = _DEFAULT_TIMEOUT
-        self._lck = RLock()
+        self._lck = Lock()
 
     def set_next_ctx(self, ctx: VAContext):
         """
@@ -73,12 +74,41 @@ class VAContextManager:
         with self._lck:
             self._set_ctx(self._current_context.handle_command(self._va, text))
 
+    def process_active_interaction(self, interaction: VAActiveInteraction):
+        """
+        Выполняет активное взаимодействие.
+
+        Args:
+            interaction:
+        """
+        with self._lck:
+            ctx = interaction.act(self._va)
+
+            if ctx is None:
+                if self._next_context is None:
+                    return
+
+                ctx = self._next_context
+
+            if self._current_context is self._default_context:
+                self._set_ctx(ctx)
+            else:
+                interrupted = self._current_context.handle_interrupt(self._va)
+
+                if interrupted is None:
+                    self._set_ctx(ctx)
+                else:
+                    self._set_ctx(InterruptContext(interrupted, ctx))
+
+    def _start_timeout(self):
+        self._timeout = self._current_context.get_timeout(self.default_timeout)
+
     def start_timeout(self):
         """
         Начинает/перезапускает отсчёт времени ожидания следующей команды.
         """
         with self._lck:
-            self._timeout = self._current_context.get_timeout(self.default_timeout)
+            self._start_timeout()
 
     def tick_timeout(self, delta: float = 1.0):
         """
@@ -98,7 +128,7 @@ class VAContextManager:
 
             if self._timeout <= 0:
                 self._set_ctx(self._current_context.handle_timeout(self._va))
-                self.start_timeout()
+                self._start_timeout()
 
 
 class TimeoutTicker(Thread):
