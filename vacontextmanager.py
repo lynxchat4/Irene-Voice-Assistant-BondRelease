@@ -1,7 +1,6 @@
 import logging
 from sys import float_info
-from threading import Thread, Lock
-from time import sleep
+from threading import Thread, Lock, Event
 from typing import Optional
 
 from vaabstract import VAApi, VAContext, VAActiveInteraction
@@ -31,33 +30,13 @@ class VAContextManager:
         self._va = va
         self._default_context = default_context
         self._current_context = default_context
-        self._next_context: Optional[VAContext] = None
         self.default_timeout = default_timeout
         self._timeout = _DEFAULT_TIMEOUT
         self._lck = Lock()
 
-    def set_next_ctx(self, ctx: VAContext):
-        """
-        При вызове во время выполнения команды или обработки истечения времени ожидания команды назначает следующий
-        контекст.
-
-        Игнорируется если метод (handle_command или handle_timeout) текущего контекста возвращает не None.
-
-        Метод добавлен для обратной совместимости (реализации метода context_set).
-
-        Args:
-            ctx: контекст, к которому нужно перейти после завершения обработки команды
-        """
-        self._next_context = ctx
-
     def _set_ctx(self, ctx: Optional[VAContext]):
         if ctx is None:
-            if self._next_context is not None:
-                ctx = self._next_context
-            else:
-                ctx = self._default_context
-
-        self._next_context = None
+            ctx = self._default_context
 
         self._current_context = ctx
 
@@ -85,10 +64,7 @@ class VAContextManager:
             ctx = interaction.act(self._va)
 
             if ctx is None:
-                if self._next_context is None:
-                    return
-
-                ctx = self._next_context
+                return
 
             if self._current_context is self._default_context:
                 self._set_ctx(ctx)
@@ -150,10 +126,19 @@ class TimeoutTicker(Thread):
         super().__init__(daemon=True)
         self._cm = cm
         self._interval = interval
+        self._terminated = Event()
 
-    def run(self) -> None:
+    def terminate(self):
+        """
+        Оповещает поток о необходимости завершить работу.
+        """
+        self._terminated.set()
+
+    def run(self):
         while True:
-            sleep(self._interval)
+            if self._terminated.wait(self._interval):
+                logging.debug("Поток отсчёта времени ожидания остановлен")
+                return
 
             # noinspection PyBroadException
             try:

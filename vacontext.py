@@ -2,44 +2,122 @@ from inspect import isgenerator
 from logging import getLogger
 from typing import Optional, Callable, Any, TypeVar, Collection, Iterable
 
-from vaabstract import VAContext, VAApi, VAContextSource, VAContextGenerator
+from vaabstract import VAContext, VAApi, VAContextSource, VAContextGenerator, VAApiExt
 from vacommandtree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
 
-
-def context_from_function_return(val: Any, va: VAApi) -> Optional[VAContext]:
-    """
-    Создаёт контекст из возвращаемого значения функции, использованной для создания контекста или активного
-    взаимодействия.
-
-    Args:
-        val: значение, возвращённое функцией
-        va:
-
-    Returns:
-        созданный контекст
-    """
-    if isgenerator(val):
-        # Генератор не запускается сразу после вызова функции.
-        # Метод start в GeneratorContext прогонит генератор до первого yield`а (или return`а, или raise)
-        return GeneratorContext(val).start(va)
-
-    return None
-
-
 T = TypeVar('T')
+
+
+class ApiExtProvider:
+    """
+    Предоставляет расширенный API (``VAApiExt``) для функций, реализующих сценарии диалогов без реализации собственного
+    типа контекста, а так же предоставляет контекстам, оборачивающим такие функции информацию о дополнительных данных,
+    переданных функцией.
+    """
+
+    def __init__(self):
+        self._next_context: Optional[VAContext] = None
+        self._next_context_timeout: Optional[float] = None
+
+    def get_next_context(self, default: Optional[VAContext]) -> Optional[VAContext]:
+        """
+        Возвращает следующий контекст, которому должно быть передано управление.
+
+        Если функция вызывала метод context_set, то вернёт контекст, переданный в этот метод, добавив таймаут, если был
+        передан соответствующий дополнительный параметр.
+
+        Args:
+            default:
+                контекст, который следует вернуть если функция не вызывала context_set
+
+        Returns:
+            контекст, которому нужно передать управление далее, None если диалог завершён
+        """
+        try:
+            if self._next_context is None:
+                return default
+
+            if self._next_context_timeout is None:
+                return self._next_context
+            else:
+                return TimeoutOverrideContext(self._next_context, self._next_context_timeout)
+        finally:
+            self._next_context = None
+            self._next_context_timeout = None
+
+    def get_next_context_from_returned_value(
+            self,
+            returned: Any,
+            va: VAApi,
+            default: Optional[VAContext] = None
+    ) -> Optional[VAContext]:
+        """
+        Возвращает контекст, которому следует передать управление с учётом значения, возвращённого функцией диалога.
+
+        Args:
+            returned:
+                значение, возвращённое функцией диалога
+            va:
+            default:
+                контекст, который следует вернуть если функция не вернула значения из которого можно создать
+                контекст и не вызывала context_set
+
+        Returns:
+            контекст, которому следует передать управление
+        """
+        if isgenerator(returned):
+            return GeneratorContext(returned, self).start(va)
+
+        return self.get_next_context(default)
+
+    def using_va(self, va: VAApi) -> VAApiExt:
+        """
+        Возвращает экземпляр расширенного API для данного экземпляра базового API.
+
+        Args:
+            va:
+
+        Returns:
+
+        """
+        provider = self
+
+        class _ApiExtImpl(VAApiExt):
+            def context_set(self, ctx: VAContextSource, timeout: Optional[float] = None):
+                provider._next_context = construct_context(ctx, ext_api_provider=provider)
+                provider._next_context_timeout = timeout
+
+            def say(self, *args, **kwargs):
+                return va.say(*args, **kwargs)
+
+            def play_audio(self, *args, **kwargs):
+                return va.play_audio(*args, **kwargs)
+
+            def submit_active_interaction(self, *args, **kwargs):
+                return va.submit_active_interaction(*args, **kwargs)
+
+        return _ApiExtImpl()
 
 
 class FunctionContext(VAContext):
     """
     Контекст, однократно вызывающий заданную функцию при получении команды.
     """
-    __slots__ = '_fn'
+    __slots__ = ('_fn', '_ext')
 
-    def __init__(self, fn: Callable[[VAApi, str], Any]):
+    def __init__(
+            self,
+            fn: Callable[[VAApiExt, str], Any],
+            *,
+            ext_api_provider: Optional[ApiExtProvider] = None,
+    ):
         self._fn = fn
+        self._ext = ext_api_provider
 
     def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
-        return context_from_function_return(self._fn(va, text), va)
+        ext = self._ext or ApiExtProvider()
+
+        return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), text), va)
 
     def __str__(self):
         try:
@@ -53,14 +131,23 @@ class FunctionContextWithArgs(VAContext):
     Контекст, однократно вызывающий заданную функцию при получении команды и передающий
     этой функции дополнительный аргумент.
     """
-    __slots__ = ('_fn', '_args')
+    __slots__ = ('_fn', '_args', '_ext')
 
-    def __init__(self, fn: Callable[[VAApi, str, T], None], arg: T):
+    def __init__(
+            self,
+            fn: Callable[[VAApiExt, str, T], None],
+            arg: T,
+            *,
+            ext_api_provider: Optional[ApiExtProvider] = None,
+    ):
         self._fn = fn
         self._arg = arg
+        self._ext = ext_api_provider
 
     def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
-        return context_from_function_return(self._fn(va, text, self._arg), va)
+        ext = self._ext or ApiExtProvider()
+
+        return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), text, self._arg), va)
 
     def __str__(self):
         try:
@@ -91,7 +178,7 @@ class GeneratorContext(VAContext):
                     # return со значением завершает диалог
                     return "Поняла, играть не будем"
                 case "правила":
-                    phrase = yield "Правила игры. Я загадываю число ... блаблабла"
+                    phrase = yield "Правила игры. Я загадываю число ... бла бла бла"
                 case "начать" | "повторить":
                     try:
                         ...
@@ -102,13 +189,13 @@ class GeneratorContext(VAContext):
                 case _:
                     phrase = yield "Не поняла..."
     """
-    __slots__ = '_gen'
+    __slots__ = ('_gen', '_ext')
 
-    def __init__(self, generator: VAContextGenerator):
+    def __init__(self, generator: VAContextGenerator, ext: ApiExtProvider):
         self._gen = generator
+        self._ext = ext
 
-    @staticmethod
-    def _process_result(va: VAApi, value: Any, default_next_ctx: Optional[VAContext]) -> Optional[VAContext]:
+    def _process_result(self, va: VAApi, value: Any, default_next_ctx: Optional[VAContext]) -> Optional[VAContext]:
         """
         Обрабатывает значение, yield'нутое или возвращённое генератором.
 
@@ -123,9 +210,11 @@ class GeneratorContext(VAContext):
         if isinstance(value, str):
             va.say(value)
 
-        # TODO: Добавить возможность переключения контекста из генератора.
-
-        return default_next_ctx
+        return self._ext.get_next_context_from_returned_value(
+            value,
+            va,
+            default_next_ctx
+        )
 
     def start(self, va: VAApi) -> Optional[VAContext]:
         try:
@@ -329,8 +418,11 @@ class TimeoutOverrideContext(BaseContextWrapper):
 def construct_context(
         src: VAContextSource,
         *,
+        # TODO: NoopContext завершит диалог в случае если подобрать команду не получится. Возможно, это не лучшее
+        #   поведение по-умолчанию для не-корневых контекстов.
         unknown_command_context: VAContext = NoopContext(),
         ambiguous_command_context: Optional[VAContext] = None,
+        ext_api_provider: Optional[ApiExtProvider] = None,
 ) -> VAContext:
     """
     Создаёт контекст диалога из исходного объекта:
@@ -352,6 +444,10 @@ def construct_context(
             контекст, обрабатывающий нераспознанные команды в случае создания CommandTreeContext из словаря.
         ambiguous_command_context:
             контекст, обрабатывающий неоднозначно распознанные команды в случае создания CommandTreeContext из словаря.
+        ext_api_provider:
+            экземпляр ``ApiExtProvider`` для случаев, когда контекст создаётся через ``VAApiExt.context_set``.
+            Если исходный объект является функцией, то созданный контекст будет переиспользовать существующий
+            ``ApiExtProvider``, тем самым сохраняя некоторые настройки, установленные предыдущей функцией.
 
     Returns:
         готовый контекст
@@ -360,7 +456,7 @@ def construct_context(
         return src
 
     if callable(src):
-        return FunctionContext(src)
+        return FunctionContext(src, ext_api_provider=ext_api_provider)
 
     if isinstance(src, dict):
         tree = VACommandTree[VAContext]()
@@ -373,9 +469,9 @@ def construct_context(
 
             if callable(first):
                 fn: Callable = first
-                if len(rest) >= 2:
-                    return FunctionContextWithArgs(fn, rest[0])
+                if len(rest) >= 1:
+                    return FunctionContextWithArgs(fn, rest[0], ext_api_provider=ext_api_provider)
                 else:
-                    return FunctionContext(fn)
+                    return FunctionContext(fn, ext_api_provider=ext_api_provider)
 
     raise Exception(f'Illegal context source: {src}')

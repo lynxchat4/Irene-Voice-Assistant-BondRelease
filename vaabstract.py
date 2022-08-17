@@ -1,8 +1,9 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, ABC
 from typing import Optional, Union, Callable, Generator, TypeVar, Any
 
 __all__ = [
     'VAApi',
+    'VAApiExt',
     'VAContext',
     'VAContextSource',
     'VAContextGenerator',
@@ -10,6 +11,8 @@ __all__ = [
     'VAContextConstructor',
     'VAActiveInteraction',
     'VAActiveInteractionSource',
+    'TTS',
+    'AudioFilePlayer',
 ]
 
 
@@ -60,6 +63,34 @@ class VAApi(metaclass=ABCMeta):
 
         Args:
             interaction:
+        """
+        ...
+
+
+class VAApiExt(VAApi, ABC):
+    """
+    Расширенный API голосового ассистента, доступный плагинам, добавляющим сценарии диалогов без реализации собственных
+    подклассов VAContext.
+
+    Содержит методы управляющие поведением контекста, в который оборачивается функция, предоставленная плагином.
+
+    Todos:
+        - Добавить действия на случай прерывания/восстановления диалога
+        - Добавить настройку времени ожидания следующей команды без переключения контекста
+    """
+
+    @abstractmethod
+    def context_set(self, ctx: 'VAContextSource', timeout: Optional[float] = None):
+        """
+        Передаёт управление переданному контексту после завершения текущего обработчика.
+
+        Может быть вызван только из обработчиков контекста (VAContext.handle_*) и во взаимодействиях
+        (VAActiveInteraction.act).
+        При вызове из других мест - поведение не определено.
+
+        Args:
+            ctx: контекст, которому будет передано управление после завершения текущего обработчика
+            timeout: время ожидания команды для следующего контекста
         """
         ...
 
@@ -183,10 +214,10 @@ VAContextGenerator = Generator[Optional[str], str, Optional[str]]
 
 VAContextSource = Union[
     VAContext,
-    Callable[[VAApi, str], None],
-    Callable[[VAApi, str], VAContextGenerator],
-    tuple[Callable[[VAApi, str, T], None], T],
-    tuple[Callable[[VAApi, str, T], VAContextGenerator], T],
+    Callable[[VAApiExt, str], None],
+    Callable[[VAApiExt, str], VAContextGenerator],
+    tuple[Callable[[VAApiExt, str, T], None], T],
+    tuple[Callable[[VAApiExt, str, T], VAContextGenerator], T],
     VAContextSourcesDict,
 ]
 
@@ -233,5 +264,5 @@ class VAActiveInteraction(metaclass=ABCMeta):
 
 VAActiveInteractionSource = Union[
     VAActiveInteraction,
-    Callable[[VAApi], Optional[VAContextGenerator]],
+    Callable[[VAApiExt], Optional[VAContextGenerator]],
 ]
