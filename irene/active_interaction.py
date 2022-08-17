@@ -1,7 +1,7 @@
 from typing import Optional, Callable
 
-from vaabstract import VAActiveInteraction, VAApi, VAContext, VAContextGenerator, VAActiveInteractionSource, VAApiExt
-from vacontext import ApiExtProvider
+from .contexts import ApiExtProvider
+from .va_abc import VAActiveInteraction, VAApi, VAContext, VAContextGenerator, VAActiveInteractionSource, VAApiExt
 
 
 class FunctionActiveInteraction(VAActiveInteraction):

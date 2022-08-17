@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import Mock
 
-from test_utuls import VAContextMock
-from vaabstract import VAApi
-from vacontextmanager import VAContextManager
+from irene.context_manager import VAContextManager
+from irene.test_utuls import VAContextMock
+from irene.va_abc import VAApi
 
 
 class VAContextManagerTest(unittest.TestCase):

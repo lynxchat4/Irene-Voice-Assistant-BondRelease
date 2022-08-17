@@ -1,6 +1,6 @@
 import unittest
 
-from vacommandtree import VACommandTree, ConflictingCommandsException, AmbiguousCommandException, \
+from irene.command_tree import VACommandTree, ConflictingCommandsException, AmbiguousCommandException, \
     NoCommandMatchesException
 
 

@@ -1,13 +1,14 @@
 import re
-from os.path import abspath
+from importlib.util import spec_from_file_location, module_from_spec
+from os.path import abspath, basename, splitext
 from re import Pattern
 from typing import Optional, Union, Any
 from unittest import TestCase
 
-from vaabstract import VAApi, VAContextSource, VAActiveInteractionSource
-from vaactiveinteraction import construct_active_interaction
-from vacontext import construct_context
-from vacontextmanager import VAContextManager
+from irene.active_interaction import construct_active_interaction
+from irene.context_manager import VAContextManager
+from irene.contexts import construct_context
+from irene.va_abc import VAApi, VAContextSource, VAActiveInteractionSource
 
 
 class _VAApiStub(VAApi):
@@ -87,5 +88,15 @@ class PluginDialogTestCase(DialogTestCase):
         if self.plugin is None:
             raise AssertionError('плагин для тестирования не выбран')
 
-        manifest = self.plugin.start(self.va)
+        if isinstance(self.plugin, str):
+            spec = spec_from_file_location(
+                splitext(basename(self.plugin))[0],
+                abspath(self.plugin),
+            )
+            plugin = module_from_spec(spec)
+            spec.loader.exec_module(plugin)
+        else:
+            plugin = self.plugin
+
+        manifest = plugin.start(self.va)
         self.using_context(manifest.get('commands'))

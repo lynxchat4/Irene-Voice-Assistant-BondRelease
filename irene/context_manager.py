@@ -3,8 +3,8 @@ from sys import float_info
 from threading import Thread, Lock, Event
 from typing import Optional
 
-from vaabstract import VAApi, VAContext, VAActiveInteraction
-from vacontext import InterruptContext
+from .contexts import InterruptContext
+from .va_abc import VAApi, VAContext, VAActiveInteraction
 
 _DEFAULT_TIMEOUT = 10.0
 _DEFAULT_TICK_INTERVAL = 1.0

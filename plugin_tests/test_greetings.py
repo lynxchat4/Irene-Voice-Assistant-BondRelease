@@ -1,11 +1,10 @@
 import unittest
 
-import plugin_greetings
-from test_utuls.dialogtestcase import PluginDialogTestCase
+from irene.test_utuls.dialogtestcase import PluginDialogTestCase
 
 
 class GreetingsPluginTest(PluginDialogTestCase):
-    plugin = plugin_greetings
+    plugin = 'plugins/plugin_greetings.py'
 
     def test_greeting(self):
         self.play_scenario("""

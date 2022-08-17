@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import Mock
 
-from test_utuls import VAContextMock
-from vaabstract import VAApi
-from vacontext import TriggerPhraseContext
+from irene.contexts import TriggerPhraseContext
+from irene.test_utuls import VAContextMock
+from irene.va_abc import VAApi
 
 
 class TriggerPhraseContextTest(unittest.TestCase):

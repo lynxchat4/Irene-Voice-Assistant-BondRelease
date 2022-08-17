@@ -2,8 +2,8 @@ from inspect import isgenerator
 from logging import getLogger
 from typing import Optional, Callable, Any, TypeVar, Collection, Iterable
 
-from vaabstract import VAContext, VAApi, VAContextSource, VAContextGenerator, VAApiExt
-from vacommandtree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
+from .command_tree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
+from .va_abc import VAContext, VAApi, VAContextSource, VAContextGenerator, VAApiExt
 
 T = TypeVar('T')
 
