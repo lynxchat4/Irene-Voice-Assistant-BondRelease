@@ -60,6 +60,10 @@ class OutputChannelPool(ABC):
 class InboundMessage(ABC):
     """
     Входящее сообщение от пользователя.
+
+    Может представлять собой как текстовое сообщение, набранное в мессенджере или консоли (очевидно) так и распознанную
+    голосовую команду (чуть менее очевидно) или некий результат предварительной обработки таковых (возможно, не
+    очевидно).
     """
 
     @abstractmethod
@@ -85,6 +89,15 @@ class InboundMessage(ABC):
         ...
 
     def get_original(self) -> 'InboundMessage':
+        """
+        Возвращает исходное сообщение если данное сообщение является обёрткой над другим сообщением.
+
+        Для любого сообщения m истинно следующее:
+        ``m.get_original().get_original() is m.get_original()``
+
+        Returns:
+            исходное сообщение, отправленное пользователем
+        """
         return self
 
 
@@ -166,7 +179,7 @@ class VAApiExt(VAApi, ABC):
 
     Содержит методы управляющие поведением контекста, в который оборачивается функция, предоставленная плагином.
 
-    Todos:
+    Todo:
         - Добавить действия на случай прерывания/восстановления диалога
         - Добавить настройку времени ожидания следующей команды без переключения контекста
     """
@@ -192,17 +205,43 @@ class VAApiExt(VAApi, ABC):
         Возвращает оригинальное сообщение.
 
         Raises:
-            RuntimeError - если метод вызван не в обработчике команды (``VAContext.handle_command``)
+            RuntimeError - если метод вызван не из методов контекста ``VAContext.handle_*``.
+            Например, при вызове из функции активного взаимодействия, до получения первого ответного сообщения.
         """
         ...
 
     def get_outputs_preferring_relevant(self, typ: Type[TChan]) -> Collection[TChan]:
+        """
+        Подбирает каналы вывода, соответствующие заданным критериям, предпочитает каналы релевантные последнему
+        полученному сообщению.
+
+        Args:
+            typ:
+                необходимый тип канала
+        Returns:
+            коллекция каналов, соответствующих запросу
+        Raises:
+            OutputChannelNotFoundError - если подходящих каналов не найдено
+        """
         try:
             return self.get_original_message().get_related_outputs().get_channels(typ)
-        except OutputChannelNotFoundError:
+        except OutputChannelNotFoundError or RuntimeError:
             return self.get_outputs().get_channels(typ)
 
     def say(self, text: str, **kwargs):
+        """
+        Отправляет текстовое сообщение.
+
+        Args:
+            text:
+                текст сообщения
+            **kwargs:
+                дополнительные опции
+
+        Raises:
+            OutputChannelNotFoundError - если не найден канал вывода, поддерживающий текстовые сообщения (вероятность
+            этого крайне мала)
+        """
         ch: TextOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
@@ -211,6 +250,18 @@ class VAApiExt(VAApi, ABC):
         ch.send(text, **kwargs)
 
     def play_audio(self, file_path: str, **kwargs):
+        """
+        Воспроизводит аудио-файл.
+
+        Args:
+            file_path:
+                путь к файлу
+            **kwargs:
+                дополнительные опции
+
+        Raises:
+            OutputChannelNotFoundError - если не найден канал вывода, поддерживающий воспроизведение аудио-файлов
+        """
         ch: AudioOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
@@ -367,21 +418,21 @@ class VAActiveInteraction(metaclass=ABCMeta):
 
     Может начать новый диалог, по завершение которого, ассистент вернётся к текущему диалогу. Например:
 
-    > блаблабла
+    > бла бла бла
 
-    < блаблаблабла
+    < бла бла бла бла
 
         < Тебе пришло новое письмо # VAActiveInteraction прерывает изначальный диалог
 
         > Прочитай
 
-        < блаблабла (текст письма)
+        < бла бла бла (текст письма)
 
         > это спам
 
         < письмо отмечено как спам
 
-    > блаблабал # продолжение изначального диалога
+    > бла бла бал # продолжение изначального диалога
     """
 
     @abstractmethod

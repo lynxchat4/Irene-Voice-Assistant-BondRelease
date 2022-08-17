@@ -21,10 +21,16 @@ class PlainTextMessage(InboundMessage):
 
 
 class PartialTextMessage(InboundMessage):
+    """
+    Остаток сообщения, часть которого уже была использована для выбора обработчика.
+
+
+    """
+
     __slots__ = ('_original', '_text')
 
     def __init__(self, original: InboundMessage, text_slice: str):
-        self._original = original
+        self._original = original.get_original()
         self._text = convert_to_canonical(text_slice)
 
     def get_text(self) -> str:
