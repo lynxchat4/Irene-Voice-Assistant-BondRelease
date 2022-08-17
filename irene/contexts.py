@@ -1,9 +1,11 @@
-from inspect import isgenerator
+from inspect import isgenerator, isclass
 from logging import getLogger
 from typing import Optional, Callable, Any, TypeVar, Collection, Iterable
 
-from .command_tree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
-from .va_abc import VAContext, VAApi, VAContextSource, VAContextGenerator, VAApiExt
+from irene.command_tree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
+from irene.inbound_messages import PartialTextMessage
+from irene.va_abc import VAContext, VAApi, VAContextSource, VAContextGenerator, VAApiExt, OutputChannelPool, \
+    InboundMessage
 
 T = TypeVar('T')
 
@@ -15,9 +17,12 @@ class ApiExtProvider:
     переданных функцией.
     """
 
+    __slots__ = ('_next_context', '_next_context_timeout', '_msg')
+
     def __init__(self):
         self._next_context: Optional[VAContext] = None
         self._next_context_timeout: Optional[float] = None
+        self._msg: Optional[InboundMessage] = None
 
     def get_next_context(self, default: Optional[VAContext]) -> Optional[VAContext]:
         """
@@ -70,19 +75,31 @@ class ApiExtProvider:
 
         return self.get_next_context(default)
 
+    def set_inbound_message(self, msg: Optional[InboundMessage]):
+        """
+        Сохраняет ссылку на обрабатываемое сообщение, делая метод ``get_original_message`` работоспособным.
+        """
+        self._msg = msg
+
     def using_va(self, va: VAApi) -> VAApiExt:
         """
         Возвращает экземпляр расширенного API для данного экземпляра базового API.
-
-        Args:
-            va:
-
-        Returns:
-
         """
         provider = self
 
         class _ApiExtImpl(VAApiExt):
+            __slots__ = ()
+
+            def get_original_message(self) -> InboundMessage:
+                msg = provider._msg
+
+                if msg is None:
+                    raise RuntimeError(
+                        'get_original_message вызван не из обработчика команды либо API инициализирован некорректно'
+                    )
+
+                return msg
+
             def context_set(self, ctx: VAContextSource, timeout: Optional[float] = None):
                 provider._next_context = construct_context(ctx, ext_api_provider=provider)
                 provider._next_context_timeout = timeout
@@ -95,6 +112,9 @@ class ApiExtProvider:
 
             def submit_active_interaction(self, *args, **kwargs):
                 return va.submit_active_interaction(*args, **kwargs)
+
+            def get_outputs(self) -> OutputChannelPool:
+                return va.get_outputs()
 
         return _ApiExtImpl()
 
@@ -114,10 +134,11 @@ class FunctionContext(VAContext):
         self._fn = fn
         self._ext = ext_api_provider
 
-    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
         ext = self._ext or ApiExtProvider()
+        ext.set_inbound_message(message)
 
-        return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), text), va)
+        return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), message.get_text()), va)
 
     def __str__(self):
         try:
@@ -131,7 +152,7 @@ class FunctionContextWithArgs(VAContext):
     Контекст, однократно вызывающий заданную функцию при получении команды и передающий
     этой функции дополнительный аргумент.
     """
-    __slots__ = ('_fn', '_args', '_ext')
+    __slots__ = ('_fn', '_arg', '_ext')
 
     def __init__(
             self,
@@ -144,10 +165,12 @@ class FunctionContextWithArgs(VAContext):
         self._arg = arg
         self._ext = ext_api_provider
 
-    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
         ext = self._ext or ApiExtProvider()
 
-        return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), text, self._arg), va)
+        ext.set_inbound_message(message)
+
+        return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), message.get_text(), self._arg), va)
 
     def __str__(self):
         try:
@@ -224,9 +247,10 @@ class GeneratorContext(VAContext):
 
         return self._process_result(va, val, self)
 
-    def handle_command(self, va: VAApi, text: str) -> Optional['VAContext']:
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional['VAContext']:
         try:
-            val = self._gen.send(text)
+            self._ext.set_inbound_message(message)
+            val = self._gen.send(message.get_text())
         except StopIteration as e:
             return self._process_result(va, e.value, None)
 
@@ -269,19 +293,20 @@ class CommandTreeContext(VAContext):
         self._unknown_command_context = unknown_command_context
         self._ambiguous_command_context = ambiguous_command_context or unknown_command_context
 
-    def handle_command(self, va: VAApi, text: str) -> Optional['VAContext']:
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional['VAContext']:
         try:
-            ctx, arg = self._tree.get_command(text)
+            ctx: VAContext
+            ctx, rest_text = self._tree.get_command(message.get_text())
         except NoCommandMatchesException as e:
             self.logger.info(str(e))
 
-            return self._unknown_command_context.handle_command(va, text)
+            return self._unknown_command_context.handle_command(va, message)
         except AmbiguousCommandException as e:
             self.logger.info(str(e))
 
-            return self._ambiguous_command_context.handle_command(va, text)
+            return self._ambiguous_command_context.handle_command(va, message)
 
-        return ctx.handle_command(va, arg)
+        return ctx.handle_command(va, PartialTextMessage(message, rest_text))
 
 
 class TriggerPhraseContext(VAContext):
@@ -301,15 +326,15 @@ class TriggerPhraseContext(VAContext):
         self._phrases = phrases
         self._next_context = next_context
 
-    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
-        words = text.split(' ')
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
+        words = message.get_text().split(' ')
 
         while len(words) > 0:
             for phrase in self._phrases:
                 if words[:len(phrase)] == phrase:
                     rest_text = ' '.join(words[len(phrase):])
 
-                    return self._next_context.handle_command(va, rest_text)
+                    return self._next_context.handle_command(va, PartialTextMessage(message, rest_text))
 
             words = words[1:]
 
@@ -342,8 +367,8 @@ class InterruptContext(VAContext):
         self._current = ctx
         return self
 
-    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
-        return self._process_next_ctx(va, self._current.handle_command(va, text))
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
+        return self._process_next_ctx(va, self._current.handle_command(va, message))
 
     def handle_timeout(self, va: VAApi) -> Optional[VAContext]:
         return self._process_next_ctx(va, self._current.handle_timeout(va))
@@ -366,7 +391,7 @@ class NoopContext(VAContext):
     """
     __slots__: Iterable[str] = ()
 
-    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
         return None
 
 
@@ -385,8 +410,8 @@ class BaseContextWrapper(VAContext):
 
         return ctx
 
-    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
-        return self._wrap_next(self._wrapped.handle_command(va, text))
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
+        return self._wrap_next(self._wrapped.handle_command(va, message))
 
     def handle_timeout(self, va: VAApi) -> Optional[VAContext]:
         return self._wrap_next(self._wrapped.handle_timeout(va))
@@ -427,6 +452,9 @@ def construct_context(
     """
     Создаёт контекст диалога из исходного объекта:
 
+    - из класса, являющегося подклассом ``VAContext`` создаёт его экземпляр, вызывая конструктор без дополнительных
+      аргументов
+
     - из функции - контекст, вызывающий эту функцию (см. ``FunctionContext``)
 
     - из кортежа с функцией и параметром - контекст, вызывающий эту функцию с этим параметром
@@ -454,6 +482,9 @@ def construct_context(
     """
     if isinstance(src, VAContext):
         return src
+
+    if isclass(src) and issubclass(src, VAContext):
+        return src()
 
     if callable(src):
         return FunctionContext(src, ext_api_provider=ext_api_provider)

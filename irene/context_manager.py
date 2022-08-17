@@ -1,10 +1,9 @@
 import logging
-from sys import float_info
 from threading import Thread, Lock, Event
 from typing import Optional
 
 from .contexts import InterruptContext
-from .va_abc import VAApi, VAContext, VAActiveInteraction
+from .va_abc import VAApi, VAContext, VAActiveInteraction, InboundMessage
 
 _DEFAULT_TIMEOUT = 10.0
 _DEFAULT_TICK_INTERVAL = 1.0
@@ -39,19 +38,17 @@ class VAContextManager:
             ctx = self._default_context
 
         self._current_context = ctx
+        self._start_timeout()
 
-        # не начинать отсчёт времени ожидания до вызова start_timeout
-        self._timeout = float_info.max
-
-    def process_command(self, text: str):
+    def process_command(self, message: InboundMessage):
         """
         Обрабатывает переданную текстовую команду.
 
         Args:
-            text: текст команды
+            message: сообщение от пользователя
         """
         with self._lck:
-            self._set_ctx(self._current_context.handle_command(self._va, text))
+            self._set_ctx(self._current_context.handle_command(self._va, message))
 
     def process_active_interaction(self, interaction: VAActiveInteraction):
         """
@@ -78,13 +75,6 @@ class VAContextManager:
 
     def _start_timeout(self):
         self._timeout = self._current_context.get_timeout(self.default_timeout)
-
-    def start_timeout(self):
-        """
-        Начинает/перезапускает отсчёт времени ожидания следующей команды.
-        """
-        with self._lck:
-            self._start_timeout()
 
     def tick_timeout(self, delta: float = 1.0):
         """

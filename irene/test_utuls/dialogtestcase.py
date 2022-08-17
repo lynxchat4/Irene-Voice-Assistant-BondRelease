@@ -8,23 +8,42 @@ from unittest import TestCase
 from irene.active_interaction import construct_active_interaction
 from irene.context_manager import VAContextManager
 from irene.contexts import construct_context
-from irene.va_abc import VAApi, VAContextSource, VAActiveInteractionSource
+from irene.inbound_messages import PlainTextMessage
+from irene.output_pool import OutputPoolImpl
+from irene.va_abc import VAApi, VAContextSource, VAActiveInteractionSource, OutputChannelPool, TextOutputChannel, \
+    AudioOutputChannel
 
 
 class _VAApiStub(VAApi):
     ctx_manager: VAContextManager
 
-    def play_audio(self, file_path: str):
-        self.say(f'[play {abspath(file_path)}]')
-
-    def submit_active_interaction(self, interaction: VAActiveInteractionSource):
-        self.ctx_manager.process_active_interaction(construct_active_interaction(interaction))
-
     def __init__(self):
         self._output_log = ''
 
-    def say(self, text: str):
-        self._output_log = re.sub(r' +', ' ', f'{self._output_log} {text}').strip()
+        api_stub = self
+
+        class TextOutputStub(TextOutputChannel):
+            def send(self, text: str, **kwargs):
+                api_stub._output_log = re.sub(r' +', ' ', f'{api_stub._output_log} {text}').strip()
+
+        text_out = TextOutputStub()
+
+        class AudioOutputStub(AudioOutputChannel):
+            def send_file(self, file_path: str, **kwargs):
+                text_out.send(f'[play {abspath(file_path)}]')
+
+        audio_out = AudioOutputStub()
+
+        self._outputs_pool = OutputPoolImpl([text_out, audio_out])
+
+    def get_outputs(self) -> OutputChannelPool:
+        return self._outputs_pool
+
+    def get_relevant_outputs(self) -> OutputChannelPool:
+        return self._outputs_pool
+
+    def submit_active_interaction(self, interaction: VAActiveInteractionSource):
+        self.ctx_manager.process_active_interaction(construct_active_interaction(interaction))
 
     def pull_output(self) -> str:
         o = self._output_log
@@ -48,7 +67,7 @@ class DialogTestCase(TestCase):
         if self.ctx_manager is None:
             raise AssertionError(f'метод say("{text}") вызван до using_context()')
 
-        self.ctx_manager.process_command(text)
+        self.ctx_manager.process_command(PlainTextMessage(text, self.va.get_outputs()))
 
     def assert_reply(self, pattern: Union[str, Pattern]):
         if self.ctx_manager is None:

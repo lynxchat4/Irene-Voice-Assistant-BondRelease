@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 from irene.contexts import TriggerPhraseContext
 from irene.test_utuls import VAContextMock
+from irene.test_utuls.stub_text_message import tm
 from irene.va_abc import VAApi
 
 
@@ -20,29 +21,29 @@ class TriggerPhraseContextTest(unittest.TestCase):
     def test_simple_phrase(self):
         c = TriggerPhraseContext([["ирина"]], self.next_ctx)
         self.assertIs(
-            c.handle_command(self.va, "ирина привет"),
+            c.handle_command(self.va, tm("ирина привет")),
             self.ctx1
         )
         self.assertIs(
-            c.handle_command(self.va, "ирина пока"),
+            c.handle_command(self.va, tm("ирина пока")),
             self.ctx2
         )
 
     def test_simple_phrase_omit_prefix(self):
         c = TriggerPhraseContext([["ирина"]], self.next_ctx)
         self.assertIs(
-            c.handle_command(self.va, "бла бла бла ирина привет"),
+            c.handle_command(self.va, tm("бла бла бла ирина привет")),
             self.ctx1
         )
         self.assertIs(
-            c.handle_command(self.va, "привет ирина пока"),
+            c.handle_command(self.va, tm("привет ирина пока")),
             self.ctx2
         )
 
     def test_simple_phrase_no_match(self):
         c = TriggerPhraseContext([["ирина"]], self.next_ctx)
         self.assertIs(
-            c.handle_command(self.va, "ира привет"),
+            c.handle_command(self.va, tm("ира привет")),
             None
         )
         self.next_ctx.handle_command.assert_not_called()
@@ -50,22 +51,22 @@ class TriggerPhraseContextTest(unittest.TestCase):
     def test_long_phrase(self):
         c = TriggerPhraseContext([["окей", "ирина", "ивановна"]], self.next_ctx)
         self.assertIs(
-            c.handle_command(self.va, "окей ирина ивановна привет"),
+            c.handle_command(self.va, tm("окей ирина ивановна привет")),
             self.ctx1
         )
 
     def test_varying_phrase(self):
         c = TriggerPhraseContext([["ирина"], ["ирины"], ["ирину"]], self.next_ctx)
         self.assertIs(
-            c.handle_command(self.va, "ирина привет"),
+            c.handle_command(self.va, tm("ирина привет")),
             self.ctx1
         )
         self.assertIs(
-            c.handle_command(self.va, "ирины привет"),
+            c.handle_command(self.va, tm("ирины привет")),
             self.ctx1
         )
         self.assertIs(
-            c.handle_command(self.va, "ирину привет"),
+            c.handle_command(self.va, tm("ирину привет")),
             self.ctx1
         )
 

@@ -1,7 +1,7 @@
 from typing import Optional
 from unittest.mock import Mock
 
-from irene.va_abc import VAContext, VAApi
+from irene.va_abc import VAContext, VAApi, InboundMessage
 
 
 class VAContextMock(VAContext):
@@ -10,11 +10,20 @@ class VAContextMock(VAContext):
         self.cmd_contexts: dict[str, VAContext] = {}
         self.timeout = None
 
+        self.handle_command_text = Mock(wraps=self.handle_command_text)
         self.handle_command = Mock(wraps=self.handle_command)
         self.handle_timeout = Mock(wraps=self.handle_timeout)
 
-    def handle_command(self, va: VAApi, text: str) -> Optional[VAContext]:
-        return self.cmd_contexts.get(text)
+    def handle_command_text(self, va: VAApi, text: str):
+        """
+        Mock-метод, которому от сообщения передаётся только текст.
+        Для более удобного сопоставления текста с ожидаемым.
+        """
+        ...
+
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
+        self.handle_command_text(va, message.get_text())
+        return self.cmd_contexts.get(message.get_text())
 
     def handle_timeout(self, va: VAApi) -> Optional[VAContext]:
         return self.timeout_context

@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod, ABC
-from typing import Optional, Union, Callable, Generator, TypeVar, Any
+from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection
 
 __all__ = [
     'VAApi',
@@ -11,9 +11,81 @@ __all__ = [
     'VAContextConstructor',
     'VAActiveInteraction',
     'VAActiveInteractionSource',
-    'TTS',
-    'AudioFilePlayer',
+    'OutputChannelPool',
+    'OutputChannel',
+    'OutputChannelNotFoundError',
+    'TextOutputChannel',
+    'AudioOutputChannel',
+    'InboundMessage',
 ]
+
+
+class OutputChannel:
+    """
+    Канал, по которому ассистент может направлять ответные сообщения в том или ином виде.
+    """
+
+
+TChan = TypeVar('TChan', bound=OutputChannel)
+
+
+class OutputChannelNotFoundError(Exception):
+    def __init__(self, cla55: Type[OutputChannel]):
+        super().__init__(f'Не удалось подобрать канал типа {cla55}')
+
+
+class OutputChannelPool(ABC):
+    """
+    Набор (пул) каналов вывода.
+    """
+
+    @abstractmethod
+    def get_channels(self, typ: Type[TChan]) -> Collection[TChan]:
+        """
+        Возвращает каналы из этого пула, наследующие заданный класс.
+
+        Notes:
+            Из-за бага в mypy, проверка типов выдаёт ошибку если передавать абстрактный класс первым аргументом.
+        Args:
+            typ:
+                необходимый тип канала
+        Returns:
+            коллекция каналов, соответствующих запросу
+        Raises:
+            OutputChannelNotFoundError - если подходящих каналов не найдено
+        """
+        ...
+
+
+class InboundMessage(ABC):
+    """
+    Входящее сообщение от пользователя.
+    """
+
+    @abstractmethod
+    def get_text(self) -> str:
+        """
+        Возвращает текст сообщения в каноническом формате.
+
+        С.м. ``convert_to_canonical``.
+
+        Returns:
+            текст сообщения в каноническом формате
+        """
+        ...
+
+    @abstractmethod
+    def get_related_outputs(self) -> OutputChannelPool:
+        """
+        Возвращает пул каналов вывода, через которые следует отвечать на это сообщение.
+
+        Returns:
+            пул каналов вывода, через которые следует отвечать на это сообщение
+        """
+        ...
+
+    def get_original(self) -> 'InboundMessage':
+        return self
 
 
 class VAApi(metaclass=ABCMeta):
@@ -22,7 +94,16 @@ class VAApi(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def say(self, text: str):
+    def get_outputs(self) -> OutputChannelPool:
+        """
+        Возвращает пул всех доступных каналов вывода.
+
+        Returns:
+            пул всех доступных каналов вывода
+        """
+        ...
+
+    def say(self, text: str, **kwargs):
         """
         Воспроизводит переданную фразу через основной канал вывода.
 
@@ -34,14 +115,19 @@ class VAApi(metaclass=ABCMeta):
 
         Args:
             text: текст фразы
+            **kwargs: дополнительные опции
         """
-        ...
+        ch: TextOutputChannel
+
+        # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
+        ch, = self.get_outputs().get_channels(TextOutputChannel)  # type: ignore
+
+        ch.send(text, **kwargs)
 
     def play_voice_assistant_speech(self, text: str):
         return self.say(text)
 
-    @abstractmethod
-    def play_audio(self, file_path: str):
+    def play_audio(self, file_path: str, **kwargs):
         """
         Воспроизводит аудио-файл.
 
@@ -53,8 +139,14 @@ class VAApi(metaclass=ABCMeta):
 
         Args:
             file_path: путь к файлу
+            **kwargs: дополнительные опции
         """
-        ...
+        ch: AudioOutputChannel
+
+        # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
+        ch, = self.get_outputs().get_channels(AudioOutputChannel)  # type: ignore
+
+        ch.send_file(file_path, **kwargs)
 
     @abstractmethod
     def submit_active_interaction(self, interaction: 'VAActiveInteractionSource'):
@@ -94,42 +186,84 @@ class VAApiExt(VAApi, ABC):
         """
         ...
 
+    @abstractmethod
+    def get_original_message(self) -> InboundMessage:
+        """
+        Возвращает оригинальное сообщение.
 
-class TTS(metaclass=ABCMeta):
+        Raises:
+            RuntimeError - если метод вызван не в обработчике команды (``VAContext.handle_command``)
+        """
+        ...
+
+    def get_outputs_preferring_relevant(self, typ: Type[TChan]) -> Collection[TChan]:
+        try:
+            return self.get_original_message().get_related_outputs().get_channels(typ)
+        except OutputChannelNotFoundError:
+            return self.get_outputs().get_channels(typ)
+
+    def say(self, text: str, **kwargs):
+        ch: TextOutputChannel
+
+        # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
+        ch, = self.get_outputs_preferring_relevant(TextOutputChannel)  # type: ignore
+
+        ch.send(text, **kwargs)
+
+    def play_audio(self, file_path: str, **kwargs):
+        ch: AudioOutputChannel
+
+        # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
+        ch, = self.get_outputs_preferring_relevant(AudioOutputChannel)  # type: ignore
+
+        ch.send_file(file_path, **kwargs)
+
+
+class TextOutputChannel(ABC, OutputChannel):
     """
-    Фасад для сервиса преобразования текста в речь (TTS, Text To Speech).
+    Канал, принимающий текстовые сообщения.
+
+    Например, TTS, консоль или мессенджер.
     """
 
     @abstractmethod
-    def say(self, text: str):
+    def send(self, text: str, **kwargs):
         """
-        Озвучивает заданный текст.
+        Отправляет текстовое сообщение.
 
-        Блокирует выполнение до завершения воспроизведения.
+        Блокирует выполнение до окончания отправки сообщения.
+        Семантика "окончания отправки сообщения" может отличаться в зависимости от типа канала.
+        Для TTS окончанием может считаться окончание воспроизведения озвученного текста, для мессенджера - успешная
+        доставка сообщения до сервера мессенджера или прочтение сообщения пользователем.
 
         Args:
-            text: текст, который нужно воспроизвести
+            text:
+                текст сообщения
+            **kwargs:
+                дополнительные опции, набор зависит от конкретной реализации класса.
+                Реализации должны игнорировать неизвестные им опции.
         """
         ...
 
 
-class AudioFilePlayer(metaclass=ABCMeta):
+class AudioOutputChannel(ABC, OutputChannel):
     """
-    Фасад для сервиса, воспроизводящего аудио-файлы.
-
-    Используется для воспроизведения неречевых звуков (например, сигналов таймера) а так же может использоваться
-    некоторыми реализациями TTS для воспроизведения синтезированной речи.
+    Канал, способный воспроизводить звуковые сигналы/сообщения.
     """
 
     @abstractmethod
-    def play(self, file_path: str):
+    def send_file(self, file_path: str, **kwargs):
         """
-        Воспроизводит звук из заданного файла.
+        Воспроизводит аудио-файл в этот канал.
 
         Блокирует выполнение до окончания воспроизведения.
 
         Args:
-            file_path: путь к аудио-файлу
+            file_path:
+                путь к аудио-файлу
+            **kwargs:
+                дополнительные опции, набор зависит от конкретной реализации класса.
+                Реализации должны игнорировать неизвестные им опции.
         """
         ...
 
@@ -140,13 +274,13 @@ class VAContext(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def handle_command(self, va: VAApi, text: str) -> Optional['VAContext']:
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional['VAContext']:
         """
         Вызывается при получении новой голосовой команды.
 
         Args:
             va:
-            text: текст команды
+            message: входящее сообщение
 
         Returns: контекст для продолжения диалога или None для завершения диалога
         """
@@ -214,6 +348,7 @@ VAContextGenerator = Generator[Optional[str], str, Optional[str]]
 
 VAContextSource = Union[
     VAContext,
+    Type[VAContext],
     Callable[[VAApiExt, str], None],
     Callable[[VAApiExt, str], VAContextGenerator],
     tuple[Callable[[VAApiExt, str, T], None], T],
