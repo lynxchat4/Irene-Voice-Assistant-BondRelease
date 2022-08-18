@@ -50,8 +50,11 @@ class VACommandTreeTest(unittest.TestCase):
     def test_additional_text(self):
         self.assert_result("выключи звук немедленно", 'mute', "немедленно")
 
+    def test_additional_text_multiple_words(self):
+        self.assert_result("выключи звук немедленно пожалуйста", 'mute', "немедленно пожалуйста")
+
     def test_add_conflicting_rules(self):
-        with self.assertRaises(ConflictingCommandsException):
+        with self.assertRaises(ConflictingCommandsException) as e:
             self.tree.add_commands(
                 {
                     "останови": {
@@ -60,14 +63,28 @@ class VACommandTreeTest(unittest.TestCase):
                 },
                 _constructor
             )
+        self.assertRegex(
+            str(e.exception),
+            r'"останови коня"'
+        )
 
     def test_ambiguous_command(self):
-        with self.assertRaises(AmbiguousCommandException):
+        with self.assertRaises(AmbiguousCommandException) as e:
             self.tree.get_command("включи выключи звук")
 
+        self.assertRegex(
+            str(e.exception),
+            r'"включи выключи звук"'
+        )
+
     def test_unknown_command(self):
-        with self.assertRaises(NoCommandMatchesException):
+        with self.assertRaises(NoCommandMatchesException) as e:
             self.tree.get_command("включи свет")
+
+        self.assertRegex(
+            str(e.exception),
+            r'"включи свет"'
+        )
 
     def test_add_intersecting_command(self):
         self.tree.add_commands(

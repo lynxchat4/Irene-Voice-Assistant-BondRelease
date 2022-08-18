@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod, ABC
-from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection
+from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection, Tuple
 
 __all__ = [
     'VAApi',
@@ -54,7 +54,6 @@ class OutputChannelPool(ABC):
         Raises:
             OutputChannelNotFoundError - если подходящих каналов не найдено
         """
-        ...
 
 
 class InboundMessage(ABC):
@@ -76,7 +75,6 @@ class InboundMessage(ABC):
         Returns:
             текст сообщения в каноническом формате
         """
-        ...
 
     @abstractmethod
     def get_related_outputs(self) -> OutputChannelPool:
@@ -86,7 +84,6 @@ class InboundMessage(ABC):
         Returns:
             пул каналов вывода, через которые следует отвечать на это сообщение
         """
-        ...
 
     def get_original(self) -> 'InboundMessage':
         """
@@ -114,7 +111,6 @@ class VAApi(metaclass=ABCMeta):
         Returns:
             пул всех доступных каналов вывода
         """
-        ...
 
     def say(self, text: str, **kwargs):
         """
@@ -169,7 +165,6 @@ class VAApi(metaclass=ABCMeta):
         Args:
             interaction:
         """
-        ...
 
 
 class VAApiExt(VAApi, ABC):
@@ -197,18 +192,16 @@ class VAApiExt(VAApi, ABC):
             ctx: контекст, которому будет передано управление после завершения текущего обработчика
             timeout: время ожидания команды для следующего контекста
         """
-        ...
 
     @abstractmethod
-    def get_original_message(self) -> InboundMessage:
+    def get_message(self) -> InboundMessage:
         """
-        Возвращает оригинальное сообщение.
+        Возвращает полный объект сообщения.
 
         Raises:
             RuntimeError - если метод вызван не из методов контекста ``VAContext.handle_*``.
             Например, при вызове из функции активного взаимодействия, до получения первого ответного сообщения.
         """
-        ...
 
     def get_outputs_preferring_relevant(self, typ: Type[TChan]) -> Collection[TChan]:
         """
@@ -224,7 +217,7 @@ class VAApiExt(VAApi, ABC):
             OutputChannelNotFoundError - если подходящих каналов не найдено
         """
         try:
-            return self.get_original_message().get_related_outputs().get_channels(typ)
+            return self.get_message().get_related_outputs().get_channels(typ)
         except OutputChannelNotFoundError or RuntimeError:
             return self.get_outputs().get_channels(typ)
 
@@ -294,7 +287,6 @@ class TextOutputChannel(ABC, OutputChannel):
                 дополнительные опции, набор зависит от конкретной реализации класса.
                 Реализации должны игнорировать неизвестные им опции.
         """
-        ...
 
 
 class AudioOutputChannel(ABC, OutputChannel):
@@ -316,7 +308,6 @@ class AudioOutputChannel(ABC, OutputChannel):
                 дополнительные опции, набор зависит от конкретной реализации класса.
                 Реализации должны игнорировать неизвестные им опции.
         """
-        ...
 
 
 class VAContext(metaclass=ABCMeta):
@@ -335,7 +326,6 @@ class VAContext(metaclass=ABCMeta):
 
         Returns: контекст для продолжения диалога или None для завершения диалога
         """
-        ...
 
     def handle_timeout(self, va: VAApi) -> Optional['VAContext']:
         """
@@ -395,7 +385,8 @@ T = TypeVar('T')
 # VAContextSourcesDict = dict[str, 'VAContextSource'] # пока не поддерживается в mypy
 VAContextSourcesDict = dict[str, Any]
 
-VAContextGenerator = Generator[Optional[str], str, Optional[str]]
+# yield type, send type, return type
+VAContextGenerator = Generator[Optional[Union[str, Tuple[str, float]]], str, Optional[str]]
 
 VAContextSource = Union[
     VAContext,
@@ -445,10 +436,10 @@ class VAActiveInteraction(metaclass=ABCMeta):
 
         Returns: контекст нового диалога или None если начинать новый диалог не нужно
         """
-        ...
 
 
 VAActiveInteractionSource = Union[
     VAActiveInteraction,
+    Type[VAActiveInteraction],
     Callable[[VAApiExt], Optional[VAContextGenerator]],
 ]

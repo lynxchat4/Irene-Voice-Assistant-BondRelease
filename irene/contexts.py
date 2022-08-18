@@ -1,6 +1,6 @@
 from inspect import isgenerator, isclass
 from logging import getLogger
-from typing import Optional, Callable, Any, TypeVar, Collection, Iterable
+from typing import Optional, Callable, Any, TypeVar, Collection, SupportsFloat
 
 from irene.command_tree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
 from irene.inbound_messages import PartialTextMessage
@@ -39,13 +39,18 @@ class ApiExtProvider:
             контекст, которому нужно передать управление далее, None если диалог завершён
         """
         try:
-            if self._next_context is None:
-                return default
+            next_ctx = default
+
+            if self._next_context is not None:
+                next_ctx = self._next_context
+
+            if next_ctx is None:
+                return None
 
             if self._next_context_timeout is None:
-                return self._next_context
+                return next_ctx
             else:
-                return TimeoutOverrideContext(self._next_context, self._next_context_timeout)
+                return TimeoutOverrideContext(next_ctx, self._next_context_timeout)
         finally:
             self._next_context = None
             self._next_context_timeout = None
@@ -75,6 +80,9 @@ class ApiExtProvider:
 
         return self.get_next_context(default)
 
+    def set_timeout_override(self, timeout: float):
+        self._next_context_timeout = timeout
+
     def set_inbound_message(self, msg: Optional[InboundMessage]):
         """
         Сохраняет ссылку на обрабатываемое сообщение, делая метод ``get_original_message`` работоспособным.
@@ -90,7 +98,7 @@ class ApiExtProvider:
         class _ApiExtImpl(VAApiExt):
             __slots__ = ()
 
-            def get_original_message(self) -> InboundMessage:
+            def get_message(self) -> InboundMessage:
                 msg = provider._msg
 
                 if msg is None:
@@ -232,6 +240,16 @@ class GeneratorContext(VAContext):
         """
         if isinstance(value, str):
             va.say(value)
+        elif isinstance(value, tuple):
+            if len(value) >= 1:
+                first, *rest = value
+
+                if isinstance(first, str):
+                    va.say(first)
+
+                if len(rest) >= 1:
+                    if isinstance(rest[0], SupportsFloat):
+                        self._ext.set_timeout_override(float(rest[0]))
 
         return self._ext.get_next_context_from_returned_value(
             value,
@@ -242,12 +260,12 @@ class GeneratorContext(VAContext):
     def start(self, va: VAApi) -> Optional[VAContext]:
         try:
             val = next(self._gen)
-        except StopIteration:
-            return None
+        except StopIteration as e:
+            return self._process_result(va, e.value, None)
 
         return self._process_result(va, val, self)
 
-    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional['VAContext']:
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
         try:
             self._ext.set_inbound_message(message)
             val = self._gen.send(message.get_text())
@@ -256,7 +274,7 @@ class GeneratorContext(VAContext):
 
         return self._process_result(va, val, self)
 
-    def handle_timeout(self, va: VAApi) -> Optional['VAContext']:
+    def handle_timeout(self, va: VAApi) -> Optional[VAContext]:
         try:
             val = self._gen.throw(ContextTimeoutException())
         except StopIteration as e:
@@ -279,7 +297,7 @@ class CommandTreeContext(VAContext):
     def __init__(
             self,
             tree: VACommandTree,
-            unknown_command_context: VAContext,
+            unknown_command_context: Optional[VAContext] = None,
             ambiguous_command_context: Optional[VAContext] = None,
     ):
         """
@@ -293,18 +311,25 @@ class CommandTreeContext(VAContext):
         self._unknown_command_context = unknown_command_context
         self._ambiguous_command_context = ambiguous_command_context or unknown_command_context
 
-    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional['VAContext']:
+    def _handle_error(self, va: VAApi, message: InboundMessage, handler_context: Optional[VAContext]) \
+            -> Optional[VAContext]:
+        if handler_context:
+            return handler_context.handle_command(va, message)
+
+        return self
+
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
         try:
             ctx: VAContext
             ctx, rest_text = self._tree.get_command(message.get_text())
         except NoCommandMatchesException as e:
             self.logger.info(str(e))
 
-            return self._unknown_command_context.handle_command(va, message)
+            return self._handle_error(va, message, self._unknown_command_context)
         except AmbiguousCommandException as e:
             self.logger.info(str(e))
 
-            return self._ambiguous_command_context.handle_command(va, message)
+            return self._handle_error(va, message, self._ambiguous_command_context)
 
         return ctx.handle_command(va, PartialTextMessage(message, rest_text))
 
@@ -383,18 +408,6 @@ class InterruptContext(VAContext):
         return self._process_next_ctx(va, self._current.handle_restore(va))
 
 
-class NoopContext(VAContext):
-    """
-    Контекст, который ничего не делает.
-
-    Null-object от класса контекстов.
-    """
-    __slots__: Iterable[str] = ()
-
-    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
-        return None
-
-
 class BaseContextWrapper(VAContext):
     """
     Базовый класс для обёрток над контекстом.
@@ -406,7 +419,7 @@ class BaseContextWrapper(VAContext):
 
     def _wrap_next(self, ctx: Optional[VAContext]) -> Optional[VAContext]:
         if ctx is self._wrapped:
-            return self._wrapped
+            return self
 
         return ctx
 
@@ -443,10 +456,8 @@ class TimeoutOverrideContext(BaseContextWrapper):
 def construct_context(
         src: VAContextSource,
         *,
-        # TODO: NoopContext завершит диалог в случае если подобрать команду не получится. Возможно, это не лучшее
-        #   поведение по-умолчанию для не-корневых контекстов.
-        unknown_command_context: VAContext = NoopContext(),
-        ambiguous_command_context: Optional[VAContext] = None,
+        unknown_command_context: Optional[VAContextSource] = None,
+        ambiguous_command_context: Optional[VAContextSource] = None,
         ext_api_provider: Optional[ApiExtProvider] = None,
 ) -> VAContext:
     """
@@ -470,8 +481,10 @@ def construct_context(
             исходный объект - функция, кортеж из функции и аргумента, словарь или уже готовый контекст
         unknown_command_context:
             контекст, обрабатывающий нераспознанные команды в случае создания CommandTreeContext из словаря.
+            По-умолчанию нераспознанные команды будут игнорироваться.
         ambiguous_command_context:
             контекст, обрабатывающий неоднозначно распознанные команды в случае создания CommandTreeContext из словаря.
+            По-умолчанию неоднозначно распознанные команды будут игнорироваться.
         ext_api_provider:
             экземпляр ``ApiExtProvider`` для случаев, когда контекст создаётся через ``VAApiExt.context_set``.
             Если исходный объект является функцией, то созданный контекст будет переиспользовать существующий
@@ -492,17 +505,25 @@ def construct_context(
     if isinstance(src, dict):
         tree = VACommandTree[VAContext]()
         tree.add_commands(src, construct_context)
-        return CommandTreeContext(tree, unknown_command_context, ambiguous_command_context)
+        uc_constructed, ac_constructed = None, None
+
+        if unknown_command_context is not None:
+            uc_constructed = construct_context(unknown_command_context)
+
+        if ambiguous_command_context is not None:
+            if ambiguous_command_context is unknown_command_context:
+                ac_constructed = uc_constructed
+            else:
+                uc_constructed = construct_context(ambiguous_command_context)
+
+        return CommandTreeContext(tree, uc_constructed, ac_constructed)
 
     if isinstance(src, tuple):
-        if len(src) >= 1:
-            first, *rest = src
+        if len(src) == 2:
+            first, second = src
 
             if callable(first):
                 fn: Callable = first
-                if len(rest) >= 1:
-                    return FunctionContextWithArgs(fn, rest[0], ext_api_provider=ext_api_provider)
-                else:
-                    return FunctionContext(fn, ext_api_provider=ext_api_provider)
+                return FunctionContextWithArgs(fn, second, ext_api_provider=ext_api_provider)
 
     raise Exception(f'Illegal context source: {src}')

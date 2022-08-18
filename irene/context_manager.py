@@ -58,20 +58,23 @@ class VAContextManager:
             interaction:
         """
         with self._lck:
-            ctx = interaction.act(self._va)
+            interrupted: Optional[VAContext] = self._current_context.handle_interrupt(self._va)
 
-            if ctx is None:
-                return
+            interrupting: Optional[VAContext] = None
 
-            if self._current_context is self._default_context:
-                self._set_ctx(ctx)
-            else:
-                interrupted = self._current_context.handle_interrupt(self._va)
-
-                if interrupted is None:
-                    self._set_ctx(ctx)
+            try:
+                interrupting = interaction.act(self._va)
+            finally:
+                if interrupting is None:
+                    if interrupted is not None:
+                        self._set_ctx(interrupted.handle_restore(self._va))
+                    else:
+                        self._set_ctx(self._default_context)
                 else:
-                    self._set_ctx(InterruptContext(interrupted, ctx))
+                    if interrupted is None:
+                        self._set_ctx(interrupting)
+                    else:
+                        self._set_ctx(InterruptContext(interrupted, interrupting))
 
     def _start_timeout(self):
         self._timeout = self._current_context.get_timeout(self.default_timeout)

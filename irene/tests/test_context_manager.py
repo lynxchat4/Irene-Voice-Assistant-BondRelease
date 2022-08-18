@@ -1,13 +1,14 @@
+import time
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, call, patch
 
-from irene.context_manager import VAContextManager
+from irene.context_manager import VAContextManager, TimeoutTicker
 from irene.test_utuls import VAContextMock
 from irene.test_utuls.stub_text_message import tm
 from irene.va_abc import VAApi
 
 
-class VAContextManagerTest(unittest.TestCase):
+class ContextManagerTest(unittest.TestCase):
     def setUp(self):
         self.hi_to_ctx = VAContextMock()
 
@@ -56,6 +57,57 @@ class VAContextManagerTest(unittest.TestCase):
         self.mgr.process_command(tm("пока"))
 
         self.hi_to_ctx.handle_command_text.assert_called_once_with(self.va, "пока")
+
+
+class TimeoutTickerTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.cm = Mock(spec=VAContextManager)
+
+    def test_terminate(self):
+        ticker = TimeoutTicker(self.cm)
+        ticker.start()
+
+        ticker.terminate()
+
+        # Зависнет если остановка потока не сработает
+        ticker.join()
+
+    def test_call_context_manager(self):
+        ticker = TimeoutTicker(self.cm, 0.1)
+        ticker.start()
+        time.sleep(0.5)
+        ticker.terminate()
+
+        self.assertIn(
+            self.cm.tick_timeout.call_count,
+            range(4, 6)
+        )
+        for c in self.cm.tick_timeout.call_args_list:
+            self.assertEqual(
+                c,
+                call(0.1)
+            )
+
+    @patch('logging.exception')
+    def test_error_handling(self, exception_logger_mock):
+        # TimeoutTicker должен продолжать дёргать cm.tick_timeout даже если тот бросает исключения
+        self.cm.tick_timeout.side_effect = Exception('test!')
+
+        ticker = TimeoutTicker(self.cm, 0.1)
+        ticker.start()
+        time.sleep(0.5)
+        ticker.terminate()
+
+        self.assertIn(
+            self.cm.tick_timeout.call_count,
+            range(4, 6)
+        )
+        for c in self.cm.tick_timeout.call_args_list:
+            self.assertEqual(
+                c,
+                call(0.1)
+            )
+        exception_logger_mock.assert_called()
 
 
 if __name__ == '__main__':

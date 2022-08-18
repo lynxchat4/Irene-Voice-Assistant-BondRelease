@@ -1,5 +1,12 @@
 from typing import Collection, Generator, Optional, Generic, TypeVar, Union, Callable, Tuple, Any
 
+__all__ = [
+    'VACommandTree',
+    'ConflictingCommandsException',
+    'NoCommandMatchesException',
+    'AmbiguousCommandException',
+]
+
 T = TypeVar('T')
 
 TSrc = TypeVar('TSrc')
@@ -11,6 +18,8 @@ TConstructor = Callable[[TSrc], T]
 
 
 class _CommandMatch(Generic[T]):
+    __slots__ = ('ctx', 'text', 'weight')
+
     def __init__(self, ctx: T, text_arg: str, weight: float):
         self.ctx = ctx
         self.text = text_arg
@@ -51,7 +60,7 @@ class _CommandTreeNode(Generic[T]):
                 yield _CommandMatch(self._ctx, '', tolerance)
             return
 
-        if self._ctx is not None:
+        if self._ctx is not None and ignore_self is False:
             yield _CommandMatch(self._ctx, ' '.join(words), tolerance - len(words))
 
         word, *rest = words
@@ -86,10 +95,14 @@ class _CommandTreeNode(Generic[T]):
             for k_variant in k.split('|'):
                 n = self._add_node_deep(*k_variant.split(' '))
 
-                if isinstance(v, dict):
-                    n.add_dict(v, ctx_constructor)
-                else:
-                    n._set_ctx(ctx_constructor(v))
+                try:
+                    if isinstance(v, dict):
+                        n.add_dict(v, ctx_constructor)
+                    else:
+                        n._set_ctx(ctx_constructor(v))
+                except ConflictingCommandsException as e:
+                    e.prepend_word(k_variant)
+                    raise
 
 
 class NoCommandMatchesException(Exception):

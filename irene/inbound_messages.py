@@ -3,6 +3,9 @@ from irene.va_abc import InboundMessage, OutputChannelPool
 
 
 class PlainTextMessage(InboundMessage):
+    """
+    Простое текстовое сообщение без дополнительных метаданных.
+    """
     __slots__ = ('_canonical', '_txt', '_out')
 
     def __init__(self, text: str, outputs: OutputChannelPool):
@@ -23,8 +26,6 @@ class PlainTextMessage(InboundMessage):
 class PartialTextMessage(InboundMessage):
     """
     Остаток сообщения, часть которого уже была использована для выбора обработчика.
-
-
     """
 
     __slots__ = ('_original', '_text')
@@ -39,5 +40,5 @@ class PartialTextMessage(InboundMessage):
     def get_related_outputs(self) -> OutputChannelPool:
         return self._original.get_related_outputs()
 
-    def get_original(self) -> 'InboundMessage':
+    def get_original(self) -> InboundMessage:
         return self._original

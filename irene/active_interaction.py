@@ -1,7 +1,8 @@
+from inspect import isclass
 from typing import Optional, Callable
 
-from .contexts import ApiExtProvider
-from .va_abc import VAActiveInteraction, VAApi, VAContext, VAContextGenerator, VAActiveInteractionSource, VAApiExt
+from irene.contexts import ApiExtProvider
+from irene.va_abc import VAActiveInteraction, VAApi, VAContext, VAContextGenerator, VAActiveInteractionSource, VAApiExt
 
 
 class FunctionActiveInteraction(VAActiveInteraction):
@@ -22,6 +23,9 @@ class FunctionActiveInteraction(VAActiveInteraction):
 def construct_active_interaction(src: VAActiveInteractionSource) -> VAActiveInteraction:
     if isinstance(src, VAActiveInteraction):
         return src
+
+    if isclass(src) and issubclass(src, VAActiveInteraction):
+        return src()
 
     if callable(src):
         return FunctionActiveInteraction(src)
