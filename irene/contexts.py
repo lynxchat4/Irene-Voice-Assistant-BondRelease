@@ -514,7 +514,7 @@ def construct_context(
             if ambiguous_command_context is unknown_command_context:
                 ac_constructed = uc_constructed
             else:
-                uc_constructed = construct_context(ambiguous_command_context)
+                ac_constructed = construct_context(ambiguous_command_context)
 
         return CommandTreeContext(tree, uc_constructed, ac_constructed)
 

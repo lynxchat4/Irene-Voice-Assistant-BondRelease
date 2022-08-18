@@ -168,6 +168,23 @@ class ActiveInteractionTest(DialogTestCase):
         < бла бла
         """)
 
+    def test_interrupt_and_restore_context_deep(self):
+        self.using_context(self.make_bla_bla_bla_context())
+        self.play_scenario(f"""
+        > бла бла бла
+        < бла бла бла бла
+        ! act message_interaction
+        < появилось кое-что более важное, чем бла бла бла {self.expect_playback('media/message.wav')} у тебя новое сообщение
+        > прочитай
+        < типа текст сообщения
+        ! act timer_interaction
+        < {self.expect_playback('media/timer.wav')} время вышло
+        > это спам
+        < сообщение отмечено как спам вернёмся к бла бла бла
+        > бла
+        < бла бла
+        """)
+
     def test_interrupt_and_restore_with_simple_interaction(self):
         self.using_context(self.make_bla_bla_bla_context())
         self.play_scenario(f"""
