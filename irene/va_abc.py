@@ -218,8 +218,12 @@ class VAApiExt(VAApi, ABC):
         """
         try:
             return self.get_message().get_related_outputs().get_channels(typ)
-        except OutputChannelNotFoundError or RuntimeError:
-            return self.get_outputs().get_channels(typ)
+        except OutputChannelNotFoundError:
+            ...
+        except RuntimeError:
+            ...
+
+        return self.get_outputs().get_channels(typ)
 
     def say(self, text: str, **kwargs):
         """

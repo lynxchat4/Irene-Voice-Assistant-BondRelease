@@ -237,7 +237,7 @@ class ActiveInteractionTest(DialogTestCase):
             self.va.submit_active_interaction(self._faulty_interaction)
 
     @staticmethod
-    def _timeout_override_context(va: VAApiExt, text: str):
+    def _timeout_override_context(_va: VAApiExt, _text: str):
         try:
             answer = yield "у тебя 30 секунд чтобы ответить на мой вопрос", 30
         except ContextTimeoutException:

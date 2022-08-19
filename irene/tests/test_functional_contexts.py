@@ -1,6 +1,7 @@
 import unittest
 
 from irene import VAApiExt, ContextTimeoutException
+from irene.contexts import construct_context
 from irene.test_utuls import DialogTestCase
 
 
@@ -36,6 +37,22 @@ class FunctionalContextsTest(DialogTestCase):
             "привет": _hi,
             "поставь таймер": self._timer
         })
+
+    def test_str_simple_fn(self):
+        ctx = construct_context(self._timer)
+
+        self.assertRegex(
+            str(ctx),
+            r'test_functional_contexts\.FunctionalContextsTest\._timer'
+        )
+
+    def test_str_with_args(self):
+        ctx = construct_context((self._timer_set_with_purpose, "сварить пельмени"))
+
+        self.assertRegex(
+            str(ctx),
+            r'test_functional_contexts\.FunctionalContextsTest\._timer_set_with_purpose.*сварить пельмени'
+        )
 
     def test_simple_function(self):
         self.play_scenario("""

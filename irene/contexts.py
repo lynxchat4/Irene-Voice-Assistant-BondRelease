@@ -85,7 +85,7 @@ class ApiExtProvider:
 
     def set_inbound_message(self, msg: Optional[InboundMessage]):
         """
-        Сохраняет ссылку на обрабатываемое сообщение, делая метод ``get_original_message`` работоспособным.
+        Сохраняет ссылку на обрабатываемое сообщение, делая метод ``get_message`` работоспособным.
         """
         self._msg = msg
 
@@ -103,7 +103,7 @@ class ApiExtProvider:
 
                 if msg is None:
                     raise RuntimeError(
-                        'get_original_message вызван не из обработчика команды либо API инициализирован некорректно'
+                        'get_message вызван не из обработчика команды либо API инициализирован некорректно'
                     )
 
                 return msg
@@ -112,12 +112,6 @@ class ApiExtProvider:
                 provider._next_context = construct_context(ctx, ext_api_provider=provider)
                 provider._next_context_timeout = timeout
 
-            def say(self, *args, **kwargs):
-                return va.say(*args, **kwargs)
-
-            def play_audio(self, *args, **kwargs):
-                return va.play_audio(*args, **kwargs)
-
             def submit_active_interaction(self, *args, **kwargs):
                 return va.submit_active_interaction(*args, **kwargs)
 
@@ -125,6 +119,12 @@ class ApiExtProvider:
                 return va.get_outputs()
 
         return _ApiExtImpl()
+
+
+def _function_to_str(fn: Callable):
+    mod = getattr(fn, "__module__", r"¯\_(ツ)_/¯")
+    name = getattr(fn, "__qualname__", str(fn))
+    return f'{mod}.{name}'
 
 
 class FunctionContext(VAContext):
@@ -149,10 +149,7 @@ class FunctionContext(VAContext):
         return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), message.get_text()), va)
 
     def __str__(self):
-        try:
-            return f'{getattr(self._fn, "__module__")}.{self._fn.__qualname__}'
-        except AttributeError:
-            return str(self._fn)
+        return _function_to_str(self._fn)
 
 
 class FunctionContextWithArgs(VAContext):
@@ -181,10 +178,7 @@ class FunctionContextWithArgs(VAContext):
         return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), message.get_text(), self._arg), va)
 
     def __str__(self):
-        try:
-            return f'{getattr(self._fn, "__module__")}.{self._fn.__qualname__}'
-        except AttributeError:
-            return str(self._fn)
+        return f'{_function_to_str(self._fn)}({self._arg})'
 
 
 class ContextTimeoutException(Exception):
@@ -239,13 +233,13 @@ class GeneratorContext(VAContext):
         Returns: контекст для продолжения диалога или None для завершения диалога
         """
         if isinstance(value, str):
-            va.say(value)
+            self._ext.using_va(va).say(value)
         elif isinstance(value, tuple):
             if len(value) >= 1:
                 first, *rest = value
 
                 if isinstance(first, str):
-                    va.say(first)
+                    self._ext.using_va(va).say(first)
 
                 if len(rest) >= 1:
                     if isinstance(rest[0], SupportsFloat):
