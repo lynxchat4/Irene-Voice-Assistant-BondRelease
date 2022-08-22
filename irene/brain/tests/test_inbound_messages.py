@@ -1,7 +1,7 @@
 import unittest
 
-from irene.inbound_messages import PlainTextMessage, PartialTextMessage
-from irene.output_pool import OutputPoolImpl
+from irene.brain.inbound_messages import PlainTextMessage, PartialTextMessage
+from irene.brain.output_pool import OutputPoolImpl
 
 
 class InboundMessagesTest(unittest.TestCase):

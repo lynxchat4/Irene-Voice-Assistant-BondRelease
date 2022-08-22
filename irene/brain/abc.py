@@ -1,3 +1,7 @@
+"""
+Содержит базовые классы и типы, связанные с компонентами голосового ассистента, отвечающими за логику ведения диалога.
+"""
+
 from abc import ABCMeta, abstractmethod, ABC
 from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection, Tuple
 

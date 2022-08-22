@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import Mock
 
-from irene.contexts import TriggerPhraseContext
+from irene.brain.abc import VAApi
+from irene.brain.contexts import TriggerPhraseContext
 from irene.test_utuls import VAContextMock
 from irene.test_utuls.stub_text_message import tm
-from irene.va_abc import VAApi
 
 
 class TriggerPhraseContextTest(unittest.TestCase):

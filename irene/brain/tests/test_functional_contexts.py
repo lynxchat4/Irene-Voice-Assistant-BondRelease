@@ -1,7 +1,7 @@
 import unittest
 
 from irene import VAApiExt, ContextTimeoutException
-from irene.contexts import construct_context
+from irene.brain.contexts import construct_context
 from irene.test_utuls import DialogTestCase
 
 

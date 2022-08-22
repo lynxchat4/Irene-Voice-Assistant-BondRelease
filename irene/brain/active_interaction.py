@@ -1,8 +1,9 @@
 from inspect import isclass
 from typing import Optional, Callable
 
-from irene.contexts import ApiExtProvider
-from irene.va_abc import VAActiveInteraction, VAApi, VAContext, VAContextGenerator, VAActiveInteractionSource, VAApiExt
+from irene.brain.abc import VAActiveInteraction, VAApi, VAContext, VAContextGenerator, VAActiveInteractionSource, \
+    VAApiExt
+from irene.brain.contexts import ApiExtProvider
 
 
 class FunctionActiveInteraction(VAActiveInteraction):

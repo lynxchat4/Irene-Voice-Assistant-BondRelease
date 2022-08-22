@@ -2,8 +2,8 @@ import logging
 from threading import Thread, Lock, Event
 from typing import Optional
 
-from .contexts import InterruptContext
-from .va_abc import VAApi, VAContext, VAActiveInteraction, InboundMessage
+from irene.brain.abc import VAApi, VAContext, VAActiveInteraction, InboundMessage
+from irene.brain.contexts import InterruptContext
 
 _DEFAULT_TIMEOUT = 10.0
 _DEFAULT_TICK_INTERVAL = 1.0

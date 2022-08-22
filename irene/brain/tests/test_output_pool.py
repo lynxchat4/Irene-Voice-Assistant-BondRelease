@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import Mock
 
-from irene.output_pool import OutputPoolImpl
-from irene.va_abc import TextOutputChannel, AudioOutputChannel, OutputChannel, OutputChannelNotFoundError
+from irene.brain.abc import TextOutputChannel, AudioOutputChannel, OutputChannel, OutputChannelNotFoundError
+from irene.brain.output_pool import OutputPoolImpl
 
 
 class _CustomOutputChannel(OutputChannel):

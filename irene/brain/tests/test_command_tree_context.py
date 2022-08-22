@@ -3,10 +3,10 @@ from typing import Optional
 from unittest.mock import Mock
 
 from irene import VAApi, VAContext
-from irene.contexts import construct_context, CommandTreeContext
+from irene.brain.abc import InboundMessage
+from irene.brain.contexts import construct_context, CommandTreeContext
 from irene.test_utuls import VAContextMock
 from irene.test_utuls.stub_text_message import tm
-from irene.va_abc import InboundMessage
 
 
 class CommandTreeContextTest(unittest.TestCase):

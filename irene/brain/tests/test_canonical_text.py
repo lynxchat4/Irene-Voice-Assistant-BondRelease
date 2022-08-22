@@ -1,6 +1,6 @@
 import unittest
 
-from irene.canonical_text import convert_to_canonical, is_canonical
+from irene.brain.canonical_text import convert_to_canonical, is_canonical
 
 
 class ToCanonicalTest(unittest.TestCase):

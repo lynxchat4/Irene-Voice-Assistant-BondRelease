@@ -1,0 +1,2 @@
+from irene.plugin_loader.core_plugins.config import ConfigPlugin
+from irene.plugin_loader.core_plugins.plugin_discovery import PluginDiscoveryPlugin

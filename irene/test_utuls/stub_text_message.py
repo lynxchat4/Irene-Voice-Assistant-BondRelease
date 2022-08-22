@@ -1,5 +1,5 @@
-from irene.output_pool import EMPTY_OUTPUT_POOL
-from irene.va_abc import InboundMessage, OutputChannelPool
+from irene.brain.abc import InboundMessage, OutputChannelPool
+from irene.brain.output_pool import EMPTY_OUTPUT_POOL
 
 
 class StubTextMessage(InboundMessage):

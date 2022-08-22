@@ -1,5 +1,5 @@
-from irene.canonical_text import convert_to_canonical
-from irene.va_abc import InboundMessage, OutputChannelPool
+from irene.brain.abc import InboundMessage, OutputChannelPool
+from irene.brain.canonical_text import convert_to_canonical
 
 
 class PlainTextMessage(InboundMessage):

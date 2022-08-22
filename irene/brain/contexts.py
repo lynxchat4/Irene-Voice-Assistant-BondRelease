@@ -2,10 +2,10 @@ from inspect import isgenerator, isclass
 from logging import getLogger
 from typing import Optional, Callable, Any, TypeVar, Collection, SupportsFloat
 
-from irene.command_tree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
-from irene.inbound_messages import PartialTextMessage
-from irene.va_abc import VAContext, VAApi, VAContextSource, VAContextGenerator, VAApiExt, OutputChannelPool, \
+from irene.brain.abc import VAContext, VAApi, VAContextSource, VAContextGenerator, VAApiExt, OutputChannelPool, \
     InboundMessage
+from irene.brain.command_tree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
+from irene.brain.inbound_messages import PartialTextMessage
 
 T = TypeVar('T')
 

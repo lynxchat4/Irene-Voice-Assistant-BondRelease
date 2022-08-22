@@ -2,10 +2,10 @@ import time
 import unittest
 from unittest.mock import Mock, call, patch
 
-from irene.context_manager import VAContextManager, TimeoutTicker
+from irene.brain.abc import VAApi
+from irene.brain.context_manager import VAContextManager, TimeoutTicker
 from irene.test_utuls import VAContextMock
 from irene.test_utuls.stub_text_message import tm
-from irene.va_abc import VAApi
 
 
 class ContextManagerTest(unittest.TestCase):

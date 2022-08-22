@@ -5,13 +5,13 @@ from re import Pattern
 from typing import Optional, Union, Any
 from unittest import TestCase
 
-from irene.active_interaction import construct_active_interaction
-from irene.context_manager import VAContextManager
-from irene.contexts import construct_context
-from irene.inbound_messages import PlainTextMessage
-from irene.output_pool import OutputPoolImpl
-from irene.va_abc import VAApi, VAContextSource, VAActiveInteractionSource, OutputChannelPool, TextOutputChannel, \
+from irene.brain.abc import VAApi, VAContextSource, VAActiveInteractionSource, OutputChannelPool, TextOutputChannel, \
     AudioOutputChannel
+from irene.brain.active_interaction import construct_active_interaction
+from irene.brain.context_manager import VAContextManager
+from irene.brain.contexts import construct_context
+from irene.brain.inbound_messages import PlainTextMessage
+from irene.brain.output_pool import OutputPoolImpl
 
 
 class _VAApiStub(VAApi):

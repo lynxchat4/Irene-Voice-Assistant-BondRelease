@@ -2,9 +2,9 @@ import unittest
 from typing import Optional, Type
 
 from irene import VAApiExt, ContextTimeoutException, VAContext, VAApi
-from irene.active_interaction import construct_active_interaction
+from irene.brain.abc import InboundMessage, VAActiveInteraction
+from irene.brain.active_interaction import construct_active_interaction
 from irene.test_utuls import DialogTestCase
-from irene.va_abc import InboundMessage, VAActiveInteraction
 
 
 class ActiveInteractionConstructorTest(unittest.TestCase):

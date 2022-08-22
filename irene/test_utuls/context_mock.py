@@ -1,7 +1,7 @@
 from typing import Optional
 from unittest.mock import Mock
 
-from irene.va_abc import VAContext, VAApi, InboundMessage
+from irene.brain.abc import VAContext, VAApi, InboundMessage
 
 
 class VAContextMock(VAContext):
