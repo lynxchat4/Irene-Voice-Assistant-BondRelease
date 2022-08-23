@@ -5,6 +5,7 @@ from irene import VAApiExt, ContextTimeoutException, VAContext, VAApi
 from irene.brain.abc import InboundMessage, VAActiveInteraction
 from irene.brain.active_interaction import construct_active_interaction
 from irene.test_utuls import DialogTestCase
+from irene.test_utuls.stub_text_message import tm
 
 
 class ActiveInteractionConstructorTest(unittest.TestCase):
@@ -230,11 +231,40 @@ class ActiveInteractionTest(DialogTestCase):
         # выкидывает ошибку, т.к. в общем случае оно не является реакцией на какое-либо сообщение
         va.get_message()
 
-    def test_get_original_message_call_error(self):
+    def test_get_message_call_error(self):
         self.using_context(self.noop_ctx)
 
         with self.assertRaises(RuntimeError):
             self.va.submit_active_interaction(self._faulty_interaction)
+
+    def test_get_message_when_provided(self):
+        self.using_context(self.noop_ctx)
+
+        msg = tm('привет')
+
+        def _interaction(va: VAApiExt):
+            self.assertIs(va.get_message(), msg)
+
+        self.va.submit_active_interaction(_interaction, related_message=msg)
+
+    def test_get_message_implicitly_provided(self):
+        ctx_message = None
+        ctx_va = None
+
+        def _context(va: VAApiExt, text: str):
+            nonlocal ctx_va, ctx_message
+            ctx_message = va.get_message()
+            ctx_va = va
+
+        self.using_context(_context)
+        self.play_scenario("""
+        > привет
+        """)
+
+        def _interaction(va: VAApiExt):
+            self.assertIs(va.get_message(), ctx_message)
+
+        ctx_va.submit_active_interaction(_interaction)
 
     @staticmethod
     def _timeout_override_context(_va: VAApiExt, _text: str):

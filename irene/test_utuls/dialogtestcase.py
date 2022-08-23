@@ -6,7 +6,7 @@ from typing import Optional, Union, Any
 from unittest import TestCase
 
 from irene.brain.abc import VAApi, VAContextSource, VAActiveInteractionSource, OutputChannelPool, TextOutputChannel, \
-    AudioOutputChannel
+    AudioOutputChannel, InboundMessage
 from irene.brain.active_interaction import construct_active_interaction
 from irene.brain.context_manager import VAContextManager
 from irene.brain.contexts import construct_context
@@ -42,11 +42,18 @@ class _VAApiStub(VAApi):
     def get_relevant_outputs(self) -> OutputChannelPool:
         return self._outputs_pool
 
-    def submit_active_interaction(self, interaction: VAActiveInteractionSource):
+    def submit_active_interaction(
+            self,
+            interaction: VAActiveInteractionSource,
+            *,
+            related_message: Optional[InboundMessage] = None,
+    ):
         if self.ctx_manager is None:
             raise AssertionError('submit_active_interaction вызван до using_context')
 
-        self.ctx_manager.process_active_interaction(construct_active_interaction(interaction))
+        self.ctx_manager.process_active_interaction(
+            construct_active_interaction(interaction, related_message=related_message)
+        )
 
     def pull_output(self) -> str:
         o = self._output_log

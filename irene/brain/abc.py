@@ -162,12 +162,22 @@ class VAApi(metaclass=ABCMeta):
         ch.send_file(file_path, **kwargs)
 
     @abstractmethod
-    def submit_active_interaction(self, interaction: 'VAActiveInteractionSource'):
+    def submit_active_interaction(
+            self,
+            interaction: 'VAActiveInteractionSource',
+            *,
+            related_message: Optional['InboundMessage'] = None,
+    ):
         """
         Начинает активное взаимодействие.
 
         Args:
             interaction:
+            related_message:
+                ранее полученное сообщение, связанное с взаимодействием.
+                Это сообщение будет доступно через метод ``get_message`` взаимодействиям, использующим ``VAApiExt``.
+                Если сообщение не передано явно, то реализация ``VAApi`` может попытаться обнаружить последнее
+                полученное сообщение и использовать его.
         """
 
 
@@ -203,8 +213,10 @@ class VAApiExt(VAApi, ABC):
         Возвращает полный объект сообщения.
 
         Raises:
-            RuntimeError - если метод вызван не из методов контекста ``VAContext.handle_*``.
-            Например, при вызове из функции активного взаимодействия, до получения первого ответного сообщения.
+            RuntimeError - если сведений о предыдущем сообщении нет.
+            Например, при вызове из функции активного взаимодействия, до получения первого ответного сообщения и при
+            отправке взаимодействия (``submit_active_interaction``) связанное сообщение не было предоставлено
+            (через параметр ``related_message`` или неявно).
         """
 
     def get_outputs_preferring_relevant(self, typ: Type[TChan]) -> Collection[TChan]:

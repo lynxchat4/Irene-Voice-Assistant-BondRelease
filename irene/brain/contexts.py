@@ -113,6 +113,9 @@ class ApiExtProvider:
                 provider._next_context_timeout = timeout
 
             def submit_active_interaction(self, *args, **kwargs):
+                if 'related_message' not in kwargs and provider._msg is not None:
+                    kwargs['related_message'] = provider._msg
+
                 return va.submit_active_interaction(*args, **kwargs)
 
             def get_outputs(self) -> OutputChannelPool:
@@ -485,6 +488,9 @@ def construct_context(
 
     Returns:
         готовый контекст
+    Raises:
+        ValueError
+        TypeError
     """
     if isinstance(src, VAContext):
         return src
@@ -522,5 +528,15 @@ def construct_context(
             if callable(first):
                 fn: Callable = first
                 return FunctionContextWithArgs(fn, second, ext_api_provider=ext_api_provider)
+            else:
+                raise ValueError(
+                    "Первое значение в кортеже для создания контекста должно быть функцией. "
+                    f"Вместо этого передан кортеж с {repr(src)} в первом элементе"
+                )
+        else:
+            raise ValueError(
+                "Кортеж для создания контекста должен содержать ровно два значения - функцию и аргумент. "
+                f"Вместо этого передан кортеж {repr(src)}"
+            )
 
-    raise Exception(f'Illegal context source: {src}')
+    raise TypeError(f'Попытка создать контекст из объекта неподдерживаемого типа ({type(src)}): {repr(src)}')
