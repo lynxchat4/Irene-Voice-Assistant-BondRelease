@@ -447,11 +447,13 @@ class TimeoutOverrideContext(BaseContextWrapper):
         return self._timeout
 
 
+UNKNOWN_COMMAND_SPECIAL_KEY = '[unknown]'
+AMBIGUOUS_COMMAND_SPECIAL_KEY = '[ambiguous]'
+
+
 def construct_context(
         src: VAContextSource,
         *,
-        unknown_command_context: Optional[VAContextSource] = None,
-        ambiguous_command_context: Optional[VAContextSource] = None,
         ext_api_provider: Optional[ApiExtProvider] = None,
 ) -> VAContext:
     """
@@ -466,19 +468,16 @@ def construct_context(
       (см. ``FunctionContextWithArgs``)
 
     - из словаря со строковыми ключами - строит дерево команд (см. ``VACommandTree``) и создаёт на его основе контекст
-      (см. ``CommandTreeContext``)
+      (см. ``CommandTreeContext``).
+      Ключи ``"[unknown]"`` (``UNKNOWN_COMMAND_SPECIAL_KEY``) и ``"[ambiguous]"`` (``AMBIGUOUS_COMMAND_SPECIAL_KEY``)
+      переданного словаря используются для создания контекстов, обрабатывающих нераспознанные и неоднозначно
+      распознанные команды соответственно.
 
     - если переданный объект уже является контекстом - то он возвращается без изменений
 
     Args:
         src:
             исходный объект - функция, кортеж из функции и аргумента, словарь или уже готовый контекст
-        unknown_command_context:
-            контекст, обрабатывающий нераспознанные команды в случае создания CommandTreeContext из словаря.
-            По-умолчанию нераспознанные команды будут игнорироваться.
-        ambiguous_command_context:
-            контекст, обрабатывающий неоднозначно распознанные команды в случае создания CommandTreeContext из словаря.
-            По-умолчанию неоднозначно распознанные команды будут игнорироваться.
         ext_api_provider:
             экземпляр ``ApiExtProvider`` для случаев, когда контекст создаётся через ``VAApiExt.context_set``.
             Если исходный объект является функцией, то созданный контекст будет переиспользовать существующий
@@ -497,6 +496,10 @@ def construct_context(
         return FunctionContext(src, ext_api_provider=ext_api_provider)
 
     if isinstance(src, dict):
+        src = src.copy()
+        unknown_command_context, = src.pop(UNKNOWN_COMMAND_SPECIAL_KEY, None),
+        ambiguous_command_context, = src.pop(AMBIGUOUS_COMMAND_SPECIAL_KEY, None),
+
         tree = VACommandTree[VAContext]()
         tree.add_commands(src, construct_context)
         uc_constructed, ac_constructed = None, None

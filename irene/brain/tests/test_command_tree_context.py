@@ -27,14 +27,12 @@ class CommandTreeContextTest(unittest.TestCase):
             def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
                 return self
 
-        ctx = construct_context(
-            {
-                "включи свет": self.c1,
-                "выключи свет": self.c1,
-            },
-            unknown_command_context=_LoopCtx,
-            ambiguous_command_context=_LoopCtx
-        )
+        ctx = construct_context({
+            "включи свет": self.c1,
+            "выключи свет": self.c1,
+            "[unknown]": _LoopCtx,
+            "[ambiguous]": _LoopCtx,
+        })
 
         unknown_ctx = ctx.handle_command(self.va, tm("привет"))
         ambiguous_ctx = ctx.handle_command(self.va, tm("включи выключи свет"))
@@ -57,7 +55,7 @@ class CommandTreeContextTest(unittest.TestCase):
 
     def test_unknown_default(self):
         self.c1.cmd_contexts["привет"] = self.c2
-        ctx = construct_context({}, ambiguous_command_context=self.c1)
+        ctx = construct_context({"[ambiguous]": self.c1})
 
         self.assertIs(
             ctx.handle_command(self.va, tm("привет")),
@@ -78,9 +76,10 @@ class CommandTreeContextTest(unittest.TestCase):
     def test_ambiguous_from_unknown(self):
         self.c1.cmd_contexts["включи выключи свет"] = self.c2
         ctx = construct_context({
-            "включи свет": self.c1,
-            "выключи свет": self.c1,
-        }, unknown_command_context=self.c1)
+            "включи свет": self.c2,
+            "выключи свет": self.c2,
+            "[unknown]": self.c1,
+        })
 
         self.assertIs(
             ctx.handle_command(self.va, tm("включи выключи свет")),
@@ -89,7 +88,7 @@ class CommandTreeContextTest(unittest.TestCase):
 
     def test_unknown_override(self):
         self.c1.cmd_contexts["привет"] = self.c2
-        ctx = construct_context({}, unknown_command_context=self.c1)
+        ctx = construct_context({"[unknown]": self.c1})
 
         self.assertIs(
             ctx.handle_command(self.va, tm("привет")),
@@ -99,9 +98,10 @@ class CommandTreeContextTest(unittest.TestCase):
     def test_ambiguous_override(self):
         self.c1.cmd_contexts["включи выключи свет"] = self.c2
         ctx = construct_context({
-            "включи свет": self.c1,
-            "выключи свет": self.c1,
-        }, ambiguous_command_context=self.c1)
+            "включи свет": self.c2,
+            "выключи свет": self.c2,
+            "[ambiguous]": self.c1,
+        })
 
         self.assertIs(
             ctx.handle_command(self.va, tm("включи выключи свет")),
