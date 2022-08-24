@@ -3,7 +3,7 @@ from collections import Collection
 
 from irene.plugin_loader.plugin_manager import PluginManagerImpl
 from irene.plugin_loader.plugins_abc import Plugin
-from irene.plugin_loader.run_operation import call_all, call_all_failsafe
+from irene.plugin_loader.run_operation import call_all, call_all_failsafe, call_all_parallel
 
 
 def launch_application(
@@ -40,6 +40,8 @@ def launch_application(
     try:
         call_all(pm.get_operation_sequence('init'), pm)
 
-        call_all(pm.get_operation_sequence('run'), pm)
+        call_all_parallel(pm.get_operation_sequence('run'), pm)
+    except KeyboardInterrupt:
+        print('Получен сигнал прерывания. Пытаюсь завершиться корректно...')
     finally:
         call_all_failsafe(pm.get_operation_sequence('terminate'), pm)

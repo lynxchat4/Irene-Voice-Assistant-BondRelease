@@ -7,7 +7,7 @@ from types import ModuleType
 from typing import Optional
 
 from irene.plugin_loader.file_match import match_files
-from irene.plugin_loader.magic_plugin import MagicPlugin, after, step_name
+from irene.plugin_loader.magic_plugin import MagicPlugin, after, step_name, operation, MagicModulePlugin
 from irene.plugin_loader.plugins_abc import PluginManager, Plugin, OperationStep
 from irene.plugin_loader.run_operation import call_until_first_result, call_all
 
@@ -32,7 +32,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
         self._plugins: list[Plugin] = []
         self._excluded: set[str] = set()
 
-    def receive_config(self, config):
+    def receive_config(self, config, *_args, **_kwargs):
         self._excluded = set(config['excludePlugins'])
 
     def get_operation_steps(self, op_name: str) -> Iterable[OperationStep]:
@@ -42,7 +42,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
         yield from super().get_operation_steps(op_name)
 
     @after('config')
-    def bootstrap(self, pm: PluginManager):
+    def bootstrap(self, pm: PluginManager, *_args, **_kwargs):
         plugin_discover_op = list(pm.get_operation_sequence('discover_plugins_at_path'))
         plugin_discovered_op = list(pm.get_operation_sequence('plugin_discovered'))
 
@@ -69,7 +69,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
                 call_all(plugin_discovered_op, pm, plugin)
 
     @step_name('discover_python_module')
-    def discover_plugins_at_path(self, pm: PluginManager, path: str):
+    def discover_plugins_at_path(self, pm: PluginManager, path: str, *_args, **_kwargs):
         if not isfile(path):
             return
 
@@ -99,7 +99,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
         return call_until_first_result(pm.get_operation_sequence('discover_plugins_in_module'), pm, module)
 
     @step_name('discover_explicit_plugins')
-    def discover_plugins_in_module(self, pm: PluginManager, module: ModuleType):
+    def discover_plugins_in_module(self, pm: PluginManager, module: ModuleType, *_args, **_kwargs):
         found = []
         attrs = getattr(module, '__all__', dir(module))
 
@@ -118,3 +118,19 @@ class PluginDiscoveryPlugin(MagicPlugin):
 
         if len(found) > 0:
             return found
+
+    @operation('discover_plugins_in_module')
+    @step_name('discover_magic_plugin_module')
+    @after('discover_explicit_plugins')
+    def discover_magic_plugin_module(self, pm: PluginManager, module: ModuleType, *_args, **_kwargs):
+        name = getattr(module, 'name', None)
+
+        if not isinstance(name, str):
+            return None
+
+        version = getattr(module, 'version', None)
+
+        if not isinstance(version, str):
+            return None
+
+        return MagicModulePlugin(module),

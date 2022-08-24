@@ -27,7 +27,7 @@ class LoggingPlugin(MagicPlugin):
         basicConfig(level=_DEFAULT_LOG_LEVEL)
 
     @staticmethod
-    def setup_cli_arguments(ap: ArgumentParser):
+    def setup_cli_arguments(ap: ArgumentParser, *_args, **_kwargs):
         ap.add_argument(
             '-l', '--log-level',
             help="Уровень логгирования, используемый до загрузки файлов конфигурации",
@@ -38,12 +38,12 @@ class LoggingPlugin(MagicPlugin):
         )
 
     @staticmethod
-    def receive_cli_arguments(args: Any):
+    def receive_cli_arguments(args: Any, *_args, **_kwargs):
         if args.log_level != _DEFAULT_LOG_LEVEL:
             basicConfig(level=args.log_level, force=True)
 
     @after('config')
-    def bootstrap(self, _pm):
+    def bootstrap(self, _pm, *_args, **_kwargs):
         basicConfig(**{**self.config.get('basicConfig', {}), **{'force': True}})
 
         for logger, level in self.config.get('levelOverrides', {}).items():

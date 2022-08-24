@@ -1,8 +1,7 @@
 import re
-from importlib.util import spec_from_file_location, module_from_spec
-from os.path import abspath, basename, splitext
+from os.path import abspath
 from re import Pattern
-from typing import Optional, Union, Any
+from typing import Optional, Union
 from unittest import TestCase
 
 from irene.brain.abc import VAApi, VAContextSource, VAActiveInteractionSource, OutputChannelPool, TextOutputChannel, \
@@ -162,24 +161,3 @@ class DialogTestCase(TestCase):
                 raise AssertionError(f'Некорректная строка в тестовом сценарии:\n\t"{line}"')
 
         return self.va.pull_output()
-
-
-class PluginDialogTestCase(DialogTestCase):
-    plugin: Any = None
-
-    def setUp(self):
-        if self.plugin is None:
-            raise AssertionError('плагин для тестирования не выбран')
-
-        if isinstance(self.plugin, str):
-            spec = spec_from_file_location(
-                splitext(basename(self.plugin))[0],
-                abspath(self.plugin),
-            )
-            plugin = module_from_spec(spec)
-            spec.loader.exec_module(plugin)
-        else:
-            plugin = self.plugin
-
-        manifest = plugin.start(self.va)
-        self.using_context(manifest.get('commands'))

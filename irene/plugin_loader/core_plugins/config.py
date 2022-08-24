@@ -25,10 +25,11 @@ class ConfigPlugin(MagicPlugin):
 
     _logger = getLogger('config')
 
-    config = {
+    config: dict[str, Any] = {
         'yamlDumpOptions': {
             'default_flow_style': False,
             'encoding': 'utf-8',
+            'allow_unicode': True,
         },
         'fileEncoding': 'utf-8',
     }
@@ -45,7 +46,7 @@ class ConfigPlugin(MagicPlugin):
         self._defaults_dirs: Collection[Path] = []
 
     @staticmethod
-    def setup_cli_arguments(ap: ArgumentParser):
+    def setup_cli_arguments(ap: ArgumentParser, *_args, **_kwargs):
         ap.add_argument(
             '-c', '--config-dir',
             help="Папка, в которой будут храниться файлы конфигурации",
@@ -64,7 +65,7 @@ class ConfigPlugin(MagicPlugin):
             action='append',
         )
 
-    def receive_cli_arguments(self, args: Any):
+    def receive_cli_arguments(self, args: Any, *_args, **_kwargs):
         self._config_dir = args.config_dir
         self._defaults_dirs = args.default_config_paths
 
@@ -93,10 +94,16 @@ class ConfigPlugin(MagicPlugin):
 
         return p
 
-    @staticmethod
-    def _load_config_file(p: Path):
-        with p.open('r') as f:
-            return yaml.load(f, Loader)
+    def _load_config_file(self, p: Path):
+        try:
+            with p.open(
+                    'r',
+                    encoding=self.config.get('fileEncoding', 'utf-8'),
+            ) as f:
+                return yaml.load(f, Loader)
+        except Exception as e:
+            self._logger.exception(f"Ошибка при чтении файла конфигурации {p}", exc_info=e)
+            raise Exception(f"Не удалось прочитать файл конфигурации {p}") from None
 
     def _get_config(self, scope: str, default: dict) -> dict:
         if scope in self._configs:
@@ -107,11 +114,16 @@ class ConfigPlugin(MagicPlugin):
         config = default
 
         if main_file.is_file():
-            config = {**config, **self._load_config_file(main_file)}
+            from_file = self._load_config_file(main_file)
+            config = {**config, **from_file}
         else:
             for default_file in self._get_default_config_files(scope):
-                overrides = self._load_config_file(default_file)
-                config = {**config, **overrides}
+                try:
+                    overrides = self._load_config_file(default_file)
+                except Exception:
+                    pass
+                else:
+                    config = {**config, **overrides}
 
         self._configs[scope] = config
 
@@ -121,7 +133,7 @@ class ConfigPlugin(MagicPlugin):
         p = self._get_config_file(scope)
         config = self._configs.get(scope, {})
 
-        with p.open('w', encoding=self.config['fileEncoding']) as f:
+        with p.open('w', encoding=self.config.get('fileEncoding', 'utf-8')) as f:
             if p.suffix == '.json':
                 return json.dump(config, f)
             else:
@@ -152,24 +164,18 @@ class ConfigPlugin(MagicPlugin):
             )
 
     @step_name('config')
-    def bootstrap(self, pm: PluginManager):
+    def bootstrap(self, pm: PluginManager, *_args, **_kwargs):
         self._process_plugin_config_steps(pm.get_operation_sequence('config'))
 
         for step in pm.get_operation_sequence('receive_config'):
             step.step(self._get_config(step.plugin.name, {}))
 
-        for step in pm.get_operation_sequence('autoconfigure'):
-            step.step()
-
-    def plugin_discovered(self, pm: PluginManager, plugin: Plugin):
+    def plugin_discovered(self, pm: PluginManager, plugin: Plugin, *_args, **_kwargs):
         self._process_plugin_config_steps(plugin.get_operation_steps('config'))
 
         for step in plugin.get_operation_steps('receive_config'):
             step.step(self._get_config(step.plugin.name, {}))
 
-        for step in plugin.get_operation_steps('autoconfigure'):
-            step.step()
-
-    def terminate(self, pm: PluginManager):
+    def terminate(self, pm: PluginManager, *_args, **_kwargs):
         for scope in self._configs.keys():
             self._store_config(scope)

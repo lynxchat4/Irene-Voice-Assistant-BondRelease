@@ -20,13 +20,13 @@ class TimerPlugin(MagicPlugin):
     }
 
     @after('config')
-    def start(self, pm):
+    def start(self, pm, *_args, **_kwargs):
         ...  # TODO: start timer thread
 
-    def terminate(self, pm):
+    def terminate(self, pm, *_args, **_kwargs):
         ...  # TODO: stop timer thread
 
-    def define_commands(self):
+    def define_commands(self, *_args, **_kwargs):
         return {
             "поставь таймер|поставь тайгер|таймер|тайгер": self._set_timer
         }

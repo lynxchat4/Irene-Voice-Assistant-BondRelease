@@ -3,7 +3,7 @@
 """
 
 from abc import ABCMeta, abstractmethod, ABC
-from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection, Tuple
+from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection, Tuple, ContextManager
 
 __all__ = [
     'VAApi',
@@ -21,6 +21,7 @@ __all__ = [
     'TextOutputChannel',
     'AudioOutputChannel',
     'InboundMessage',
+    'Brain',
 ]
 
 
@@ -102,9 +103,38 @@ class InboundMessage(ABC):
         return self
 
 
+class Brain(metaclass=ABCMeta):
+    """
+    API голосового ассистента, доступный плагинам, реализующим средства ввода/вывода (распознание/синтез речи, обмен
+    сообщениями через мессенджеры и т.д.).
+    """
+
+    @abstractmethod
+    def send_messages(
+            self,
+            outputs: OutputChannelPool,
+    ) -> ContextManager[Callable[[InboundMessage], None]]:
+        """
+        Позволяет отправлять сообщения голосовому ассистенту.
+
+        >>> brain: Brain = ...
+        >>>
+        >>> with brain.send_messages(outputs=...,) as send_message:
+        >>>     msg = ... # синхронное получение очередного входящего сообщения
+        >>>
+        >>>     send_message(msg)
+
+        Args:
+            outputs:
+                пул каналов вывода
+        Returns:
+            менеджер контекста, предоставляющий функцию отправки сообщения
+        """
+
+
 class VAApi(metaclass=ABCMeta):
     """
-    API голосового ассистента, доступный плагинам.
+    API голосового ассистента, доступный плагинам, добавляющим дополнительные команды/скиллы.
     """
 
     @abstractmethod
