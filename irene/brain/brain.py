@@ -86,6 +86,8 @@ class BrainImpl(Brain):
             config.get('defaultTimeout', 10.0),
         )
 
+        self._api_provider.use_context_manager(self._context_manager)
+
         self._ticker: Optional[TimeoutTicker] = None
 
         if not config.get('timeoutsDisabled', False):
