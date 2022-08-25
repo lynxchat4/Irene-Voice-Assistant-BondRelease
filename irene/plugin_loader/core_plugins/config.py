@@ -2,11 +2,15 @@ import json
 from argparse import ArgumentParser
 from collections import Collection
 from logging import getLogger
-from os import environ
+from os import environ, listdir
+from os.path import isdir, isfile, join, basename
 from pathlib import Path
+from shutil import copyfile
 from typing import Any, Iterable
 
 import yaml
+
+from irene.plugin_loader.file_match import match_files
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -17,6 +21,8 @@ from irene.plugin_loader.magic_plugin import MagicPlugin, step_name
 from irene.plugin_loader.abc import PluginManager, OperationStep, Plugin
 
 _CONFIG_EXTENSIONS = ('.yaml', '.yml', '.json')
+
+_TEMPLATE_DESCRIPTION_FILE = 'README.txt'
 
 
 class ConfigPlugin(MagicPlugin):
@@ -37,16 +43,37 @@ class ConfigPlugin(MagicPlugin):
     Настройки загрузки/сохранения конфигурации.
     """
 
-    def __init__(self):
+    def __init__(self, *, template_paths: Collection[str] = ()):
         super().__init__()
 
         self._configs: dict[str, dict] = {}
         self._config_comments: dict[str, str] = {}
         self._config_dir: Path = Path('./config')
         self._defaults_dirs: Collection[Path] = []
+        self._template_paths = template_paths
+        self._template_extracted = False
 
-    @staticmethod
-    def setup_cli_arguments(ap: ArgumentParser, *_args, **_kwargs):
+    def setup_cli_arguments(self, ap: ArgumentParser, *_args, **_kwargs):
+        if len(self._template_paths) > 0:
+            ap.add_argument(
+                '-T', '--config-template',
+                help="Имя шаблона конфигурации. "
+                     "Если аргумент передан и шаблон с таким именем существует, то файлы конфигурации из шаблона "
+                     "заменят текущие файлы конфигурации. "
+                     "Полезно для первоначальной настройки.",
+                dest='config_template_name',
+                metavar='<имя шаблона>',
+                type=str,
+                default=None,
+            )
+            ap.add_argument(
+                '-L', '--list-config-templates',
+                help="Перечисляет доступные шаблоны конфигурации",
+                dest='list_config_templates',
+                action='store_const',
+                const=True,
+                default=False,
+            )
         ap.add_argument(
             '-c', '--config-dir',
             help="Папка, в которой будут храниться файлы конфигурации",
@@ -65,9 +92,74 @@ class ConfigPlugin(MagicPlugin):
             action='append',
         )
 
+    def _get_template_paths(self, template_name):
+        return [
+            p
+            for p in match_files(join(p, template_name) for p in self._template_paths)
+            if isdir(p) and isfile(join(p, _TEMPLATE_DESCRIPTION_FILE))
+        ]
+
+    def _list_templates(self):
+        paths = self._get_template_paths('*')
+
+        if len(paths) == 0:
+            print(match_files(self._template_paths))
+            print("Нет доступных шаблонов конфигурации")
+            return
+
+        for p in paths:
+            print(f'{basename(p)}:')
+
+            with open(join(p, _TEMPLATE_DESCRIPTION_FILE), 'r', encoding='utf-8') as file:
+                for line in file:
+                    print(f'\t{line}')
+
+    def _ensure_config_dir(self):
+        if not self._config_dir.is_dir():
+            if self._config_dir.exists():
+                raise Exception(f'Папка конфигурации ({self._config_dir}) существует, но не является папкой.')
+
+            self._config_dir.mkdir(exist_ok=True, parents=True)
+
+    def _extract_template(self, template):
+        if self._template_extracted:
+            return
+        self._template_extracted = True
+
+        templates = self._get_template_paths(template)
+
+        if len(templates) == 0:
+            print(f"Не удалось найти шаблон конфигурации {template}")
+            exit(1)
+
+        self._ensure_config_dir()
+
+        print(f"Копирую конфигурацию из шаблона {template}...")
+
+        template_path = templates[0]
+
+        for fn in listdir(template_path):
+            if fn == _TEMPLATE_DESCRIPTION_FILE:
+                continue
+
+            dst_path = self._config_dir.joinpath(fn)
+
+            if dst_path.is_file():
+                print(f"Файл {dst_path} существует, он будет заменён файлом из шаблона {template}")
+
+            copyfile(join(template_path, fn), dst_path)
+
     def receive_cli_arguments(self, args: Any, *_args, **_kwargs):
         self._config_dir = args.config_dir
         self._defaults_dirs = args.default_config_paths
+
+        if len(self._template_paths) > 0:
+            if args.list_config_templates:
+                self._list_templates()
+                exit(0)
+
+            if args.config_template_name is not None:
+                self._extract_template(args.config_template_name)
 
     def _get_default_config_files(self, scope: str) -> Iterable[Path]:
         file_names = [scope + ext for ext in _CONFIG_EXTENSIONS]
@@ -81,11 +173,7 @@ class ConfigPlugin(MagicPlugin):
                     break
 
     def _get_config_file(self, scope: str) -> Path:
-        if not self._config_dir.is_dir():
-            if self._config_dir.exists():
-                raise Exception(f'Папка конфигурации ({self._config_dir}) существует, но не является папкой.')
-
-            self._config_dir.mkdir(exist_ok=True)
+        self._ensure_config_dir()
 
         for ext in _CONFIG_EXTENSIONS[::-1]:
             p = self._config_dir.joinpath(scope + ext)

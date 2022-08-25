@@ -5,7 +5,7 @@ from irene.plugin_loader.launcher import launch_application
 
 launch_application(
     [
-        ConfigPlugin(),
+        ConfigPlugin(template_paths=('{irene_path}/config_templates',)),
         PluginDiscoveryPlugin(),
         LoggingPlugin(),
         BrainPlugin(),

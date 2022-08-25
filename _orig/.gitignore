@@ -1,0 +1,14 @@
+/options/
+/plugins_my/
+/timer/
+/silero_*
+/.idea/
+/_orig/plugins/plugin_tts_rhvoice.py
+/rhvoice_temp.wav
+/_orig/temp/
+/_orig/plugins/plugin_tts_silero.py
+/venv/
+/.venv/
+*.pyc
+/_orig/tts_cache/
+/runva_webapi.json
