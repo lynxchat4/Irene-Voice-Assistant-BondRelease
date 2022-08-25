@@ -167,9 +167,6 @@ class VAApi(metaclass=ABCMeta):
 
         ch.send(text, **kwargs)
 
-    def play_voice_assistant_speech(self, text: str):
-        return self.say(text)
-
     def play_audio(self, file_path: str, **kwargs):
         """
         Воспроизводит аудио-файл.
