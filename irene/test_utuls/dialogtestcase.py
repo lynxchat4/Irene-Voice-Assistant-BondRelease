@@ -51,7 +51,11 @@ class _VAApiStub(VAApi):
             raise AssertionError('submit_active_interaction вызван до using_context')
 
         self.ctx_manager.process_active_interaction(
-            construct_active_interaction(interaction, related_message=related_message)
+            construct_active_interaction(
+                interaction,
+                related_message=related_message,
+                construct_context=construct_context,
+            )
         )
 
     def pull_output(self) -> str:
@@ -155,7 +159,7 @@ class DialogTestCase(TestCase):
                     raise AssertionError(
                         f'Некорректная команда "{line}": у тесткейса нет аттрибута (или метода) "{attr_name}"')
 
-                interaction = construct_active_interaction(interaction)
+                interaction = construct_active_interaction(interaction, construct_context=construct_context)
                 self.ctx_manager.process_active_interaction(interaction)
             else:
                 raise AssertionError(f'Некорректная строка в тестовом сценарии:\n\t"{line}"')

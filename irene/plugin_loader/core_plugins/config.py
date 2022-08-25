@@ -14,7 +14,7 @@ except ImportError:
     from yaml import Loader, Dumper
 
 from irene.plugin_loader.magic_plugin import MagicPlugin, step_name
-from irene.plugin_loader.plugins_abc import PluginManager, OperationStep, Plugin
+from irene.plugin_loader.abc import PluginManager, OperationStep, Plugin
 
 _CONFIG_EXTENSIONS = ('.yaml', '.yml', '.json')
 

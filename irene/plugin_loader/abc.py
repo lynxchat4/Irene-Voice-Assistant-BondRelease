@@ -19,7 +19,7 @@ from typing import Iterable, Collection, Any, NamedTuple, Union
 class OperationStep(NamedTuple):
     """
     Объект, содержащий один шаг операции, добавленный плагином, а так же дополнительные сведения о его имени,
-    зависимостях и ссылка на исходный плагин.
+    зависимостях и ссылку на исходный плагин.
     """
     step: Any
     name: str

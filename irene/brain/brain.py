@@ -1,22 +1,25 @@
 from contextlib import contextmanager
 from typing import Optional, Any
 
-from irene.brain.abc import VAContext, OutputChannelPool, VAApi, VAActiveInteractionSource, InboundMessage, Brain
+from irene.brain.abc import VAContext, OutputChannelPool, VAApi, VAActiveInteractionSource, InboundMessage, Brain, \
+    VAContextConstructor
 from irene.brain.active_interaction import construct_active_interaction
 from irene.brain.context_manager import VAContextManager, TimeoutTicker
 from irene.brain.output_pool import CompositeOutputPool, EMPTY_OUTPUT_POOL
 
 
 class _VAApiProvider:
-    __slots__ = ('_outputs', '_context_manager')
+    __slots__ = ('_outputs', '_context_manager', '_construct_context')
 
     def __init__(
             self,
             *,
             outputs: OutputChannelPool,
+            context_constructor: VAContextConstructor,
     ):
         self._outputs = outputs
         self._context_manager: Optional[VAContextManager] = None
+        self._construct_context = context_constructor
 
     def use_context_manager(self, cm: VAContextManager):
         """
@@ -54,7 +57,11 @@ class _VAApiProvider:
                 if provider._context_manager is None:
                     raise RuntimeError('submit_active_interaction вызван до инициализации ссылки на VAContextManager')
 
-                ai = construct_active_interaction(interaction, related_message=related_message)
+                ai = construct_active_interaction(
+                    interaction,
+                    related_message=related_message,
+                    construct_context=provider._construct_context,
+                )
                 provider._context_manager.process_active_interaction(ai)
 
         return VAApiImpl()
@@ -66,11 +73,12 @@ class BrainImpl(Brain):
             *,
             main_context: VAContext,
             config: dict[str, Any],
-            predefined_outputs: OutputChannelPool = EMPTY_OUTPUT_POOL
+            predefined_outputs: OutputChannelPool = EMPTY_OUTPUT_POOL,
+            context_constructor: VAContextConstructor,
     ):
         self._config = config
         self._outputs = CompositeOutputPool((predefined_outputs,))
-        self._api_provider = _VAApiProvider(outputs=self._outputs)
+        self._api_provider = _VAApiProvider(outputs=self._outputs, context_constructor=context_constructor)
 
         self._context_manager = VAContextManager(
             self._api_provider.get_api(),

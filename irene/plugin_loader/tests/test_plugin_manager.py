@@ -2,9 +2,9 @@ import unittest
 from logging import Logger
 from unittest.mock import Mock
 
+from irene.plugin_loader.abc import OperationStep, DependencyCycleException
 from irene.plugin_loader.magic_plugin import MagicPlugin, after, step_name, before
 from irene.plugin_loader.plugin_manager import PluginManagerImpl
-from irene.plugin_loader.plugins_abc import OperationStep, DependencyCycleException
 
 
 class _TestPlugin1(MagicPlugin):

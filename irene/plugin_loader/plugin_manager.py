@@ -2,7 +2,7 @@ from graphlib import TopologicalSorter, CycleError
 from logging import getLogger
 from typing import Iterable, Collection
 
-from irene.plugin_loader.plugins_abc import PluginManager, OperationStep, Plugin, DependencyCycleException
+from irene.plugin_loader.abc import PluginManager, OperationStep, Plugin, DependencyCycleException
 
 
 class PluginManagerImpl(PluginManager):

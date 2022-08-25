@@ -5,10 +5,10 @@ from typing import Union, Any
 from irene import VAContext, construct_context
 from irene.brain.command_tree import VACommandTree
 from irene.brain.contexts import CommandTreeContext
+from irene.plugin_loader.abc import Plugin, PluginManager
 from irene.plugin_loader.core_plugins import PluginDiscoveryPlugin
 from irene.plugin_loader.magic_plugin import MagicPlugin, step_name
 from irene.plugin_loader.plugin_manager import PluginManagerImpl
-from irene.plugin_loader.plugins_abc import Plugin, PluginManager
 from irene.plugin_loader.run_operation import call_all
 from irene.test_utuls import DialogTestCase
 

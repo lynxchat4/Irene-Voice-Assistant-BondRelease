@@ -1,9 +1,10 @@
+from functools import partial
 from inspect import isgenerator, isclass
 from logging import getLogger
 from typing import Optional, Callable, Any, TypeVar, Collection, SupportsFloat
 
 from irene.brain.abc import VAContext, VAApi, VAContextSource, VAContextGenerator, VAApiExt, OutputChannelPool, \
-    InboundMessage
+    InboundMessage, VAContextConstructor
 from irene.brain.command_tree import VACommandTree, NoCommandMatchesException, AmbiguousCommandException
 from irene.brain.inbound_messages import PartialTextMessage
 
@@ -17,12 +18,13 @@ class ApiExtProvider:
     переданных функцией.
     """
 
-    __slots__ = ('_next_context', '_next_context_timeout', '_msg')
+    __slots__ = ('_next_context', '_next_context_timeout', '_msg', '_construct_ctx')
 
-    def __init__(self):
+    def __init__(self, context_constructor: VAContextConstructor):
         self._next_context: Optional[VAContext] = None
         self._next_context_timeout: Optional[float] = None
         self._msg: Optional[InboundMessage] = None
+        self._construct_ctx = context_constructor
 
     def get_next_context(self, default: Optional[VAContext]) -> Optional[VAContext]:
         """
@@ -109,7 +111,7 @@ class ApiExtProvider:
                 return msg
 
             def context_set(self, ctx: VAContextSource, timeout: Optional[float] = None):
-                provider._next_context = construct_context(ctx, ext_api_provider=provider)
+                provider._next_context = provider._construct_ctx(ctx, ext_api_provider=provider)
                 provider._next_context_timeout = timeout
 
             def submit_active_interaction(self, *args, **kwargs):
@@ -134,19 +136,21 @@ class FunctionContext(VAContext):
     """
     Контекст, однократно вызывающий заданную функцию при получении команды.
     """
-    __slots__ = ('_fn', '_ext')
+    __slots__ = ('_fn', '_ext', '_construct_ctx')
 
     def __init__(
             self,
             fn: Callable[[VAApiExt, str], Any],
             *,
-            ext_api_provider: Optional[ApiExtProvider] = None,
+            ext_api_provider: Optional[ApiExtProvider],
+            context_constructor: VAContextConstructor,
     ):
         self._fn = fn
         self._ext = ext_api_provider
+        self._construct_ctx: VAContextConstructor = context_constructor
 
     def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
-        ext = self._ext or ApiExtProvider()
+        ext = self._ext or ApiExtProvider(self._construct_ctx)
         ext.set_inbound_message(message)
 
         return ext.get_next_context_from_returned_value(self._fn(ext.using_va(va), message.get_text()), va)
@@ -160,21 +164,23 @@ class FunctionContextWithArgs(VAContext):
     Контекст, однократно вызывающий заданную функцию при получении команды и передающий
     этой функции дополнительный аргумент.
     """
-    __slots__ = ('_fn', '_arg', '_ext')
+    __slots__ = ('_fn', '_arg', '_ext', '_construct_ctx')
 
     def __init__(
             self,
             fn: Callable[[VAApiExt, str, T], None],
             arg: T,
             *,
-            ext_api_provider: Optional[ApiExtProvider] = None,
+            ext_api_provider: Optional[ApiExtProvider],
+            context_constructor: VAContextConstructor,
     ):
         self._fn = fn
         self._arg = arg
         self._ext = ext_api_provider
+        self._construct_ctx: VAContextConstructor = context_constructor
 
     def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
-        ext = self._ext or ApiExtProvider()
+        ext = self._ext or ApiExtProvider(self._construct_ctx)
 
         ext.set_inbound_message(message)
 
@@ -458,6 +464,8 @@ def construct_context(
         src: VAContextSource,
         *,
         ext_api_provider: Optional[ApiExtProvider] = None,
+        construct_nested: Optional[VAContextConstructor] = None,
+        **_kwargs,
 ) -> VAContext:
     """
     Создаёт контекст диалога из исходного объекта:
@@ -478,6 +486,8 @@ def construct_context(
 
     - если переданный объект уже является контекстом - то он возвращается без изменений
 
+    Эта функция является реализацией ``VAContextConstructor`` по-умолчанию.
+
     Args:
         src:
             исходный объект - функция, кортеж из функции и аргумента, словарь или уже готовый контекст
@@ -485,6 +495,10 @@ def construct_context(
             экземпляр ``ApiExtProvider`` для случаев, когда контекст создаётся через ``VAApiExt.context_set``.
             Если исходный объект является функцией, то созданный контекст будет переиспользовать существующий
             ``ApiExtProvider``, тем самым сохраняя некоторые настройки, установленные предыдущей функцией.
+        construct_nested:
+            Функция, которая будет использоваться для создания дополнительных контекстов - контекстов команд в случае
+            получения словаря, контекстов, порождаемых создаваемым контекстом.
+            Если аргумент не передан, то будет использоваться сама функция ``construct_context``.
 
     Returns:
         готовый контекст
@@ -492,6 +506,9 @@ def construct_context(
         ValueError
         TypeError
     """
+    if construct_nested is None:
+        construct_nested = partial(construct_context, ext_api_provider=ext_api_provider)
+
     if isinstance(src, VAContext):
         return src
 
@@ -499,7 +516,7 @@ def construct_context(
         return src()
 
     if callable(src):
-        return FunctionContext(src, ext_api_provider=ext_api_provider)
+        return FunctionContext(src, ext_api_provider=ext_api_provider, context_constructor=construct_nested)
 
     if isinstance(src, dict):
         src = src.copy()
@@ -507,17 +524,17 @@ def construct_context(
         ambiguous_command_context, = src.pop(AMBIGUOUS_COMMAND_SPECIAL_KEY, None),
 
         tree = VACommandTree[VAContext]()
-        tree.add_commands(src, construct_context)
+        tree.add_commands(src, construct_nested)
         uc_constructed, ac_constructed = None, None
 
         if unknown_command_context is not None:
-            uc_constructed = construct_context(unknown_command_context)
+            uc_constructed = construct_nested(unknown_command_context)
 
         if ambiguous_command_context is not None:
             if ambiguous_command_context is unknown_command_context:
                 ac_constructed = uc_constructed
             else:
-                ac_constructed = construct_context(ambiguous_command_context)
+                ac_constructed = construct_nested(ambiguous_command_context)
 
         return CommandTreeContext(tree, uc_constructed, ac_constructed)
 
@@ -527,7 +544,12 @@ def construct_context(
 
             if callable(first):
                 fn: Callable = first
-                return FunctionContextWithArgs(fn, second, ext_api_provider=ext_api_provider)
+                return FunctionContextWithArgs(
+                    fn,
+                    second,
+                    ext_api_provider=ext_api_provider,
+                    context_constructor=construct_nested
+                )
             else:
                 raise ValueError(
                     "Первое значение в кортеже для создания контекста должно быть функцией. "

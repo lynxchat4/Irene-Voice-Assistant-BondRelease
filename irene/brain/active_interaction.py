@@ -2,7 +2,7 @@ from inspect import isclass
 from typing import Optional, Callable
 
 from irene.brain.abc import VAActiveInteraction, VAApi, VAContext, VAContextGenerator, VAActiveInteractionSource, \
-    VAApiExt, InboundMessage
+    VAApiExt, InboundMessage, VAContextConstructor
 from irene.brain.contexts import ApiExtProvider
 
 
@@ -10,18 +10,20 @@ class FunctionActiveInteraction(VAActiveInteraction):
     """
     Активное взаимодействие заданное функцией.
     """
-    __slots__ = ['_src']
+    __slots__ = ('_src', '_msg', '_construct_context')
 
     def __init__(
             self,
             src: Callable[[VAApiExt], Optional[VAContextGenerator]],
             msg: Optional[InboundMessage],
+            context_constructor: VAContextConstructor,
     ):
         self._src = src
         self._msg = msg
+        self._construct_context = context_constructor
 
     def act(self, va: VAApi) -> Optional[VAContext]:
-        ext = ApiExtProvider()
+        ext = ApiExtProvider(self._construct_context)
 
         if self._msg is not None:
             ext.set_inbound_message(self._msg)
@@ -32,6 +34,7 @@ class FunctionActiveInteraction(VAActiveInteraction):
 def construct_active_interaction(
         src: VAActiveInteractionSource,
         *,
+        construct_context: VAContextConstructor,
         related_message: Optional[InboundMessage] = None,
 ) -> VAActiveInteraction:
     if isinstance(src, VAActiveInteraction):
@@ -41,6 +44,6 @@ def construct_active_interaction(
         return src()
 
     if callable(src):
-        return FunctionActiveInteraction(src, related_message)
+        return FunctionActiveInteraction(src, related_message, construct_context)
 
     raise TypeError(f'Попытка создать активное взаимодействие из объекта неподдерживаемого типа ({type(src)}): {src}')

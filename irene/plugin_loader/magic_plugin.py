@@ -3,7 +3,7 @@ from abc import ABC
 from types import ModuleType
 from typing import Iterable, Collection, Callable, TypeVar
 
-from irene.plugin_loader.plugins_abc import Plugin, OperationStep
+from irene.plugin_loader.abc import Plugin, OperationStep
 
 _SIMPLE_PLUGIN_OP_NAME = '__sp_op_name'
 _SIMPLE_PLUGIN_DEPENDENCIES = '__sp_dependencies'

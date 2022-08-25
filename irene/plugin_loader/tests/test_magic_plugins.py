@@ -1,7 +1,7 @@
 import unittest
 
+from irene.plugin_loader.abc import OperationStep
 from irene.plugin_loader.magic_plugin import MagicPlugin, after, before, operation, step_name, MagicModulePlugin
-from irene.plugin_loader.plugins_abc import OperationStep
 
 
 class MagicPluginTest(unittest.TestCase):

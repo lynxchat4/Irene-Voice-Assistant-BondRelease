@@ -3,7 +3,7 @@
 """
 
 from abc import ABCMeta, abstractmethod, ABC
-from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection, Tuple, ContextManager
+from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection, Tuple, ContextManager, Protocol
 
 __all__ = [
     'VAApi',
@@ -448,7 +448,14 @@ VAContextSource = Union[
     VAContextSourcesDict,
 ]
 
-VAContextConstructor = Callable[[VAContextSource], VAContext]
+
+class VAContextConstructor(Protocol):
+    """
+    Функция, создающая контекст (``VAContext``) из исходного объекта (``VAContextSource``).
+    """
+
+    def __call__(self, src: VAContextSource, **kwargs: Any) -> VAContext:
+        ...
 
 
 class VAActiveInteraction(metaclass=ABCMeta):

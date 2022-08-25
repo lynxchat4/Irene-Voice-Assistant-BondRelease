@@ -1,7 +1,7 @@
 import unittest
 from typing import Optional, Type
 
-from irene import VAApiExt, ContextTimeoutException, VAContext, VAApi
+from irene import VAApiExt, ContextTimeoutException, VAContext, VAApi, construct_context
 from irene.brain.abc import InboundMessage, VAActiveInteraction
 from irene.brain.active_interaction import construct_active_interaction
 from irene.test_utuls import DialogTestCase
@@ -14,14 +14,14 @@ class ActiveInteractionConstructorTest(unittest.TestCase):
 
     def test_function(self):
         self.assertIsInstance(
-            construct_active_interaction(self.stub_interaction_fn),
+            construct_active_interaction(self.stub_interaction_fn, construct_context=construct_context),
             VAActiveInteraction
         )
 
     def test_ready_made_object(self):
-        obj = construct_active_interaction(self.stub_interaction_fn)
+        obj = construct_active_interaction(self.stub_interaction_fn, construct_context=construct_context)
 
-        self.assertIs(construct_active_interaction(obj), obj)
+        self.assertIs(construct_active_interaction(obj, construct_context=construct_context), obj)
 
     def test_class(self):
         class _TestInteraction(VAActiveInteraction):
@@ -29,7 +29,7 @@ class ActiveInteractionConstructorTest(unittest.TestCase):
                 pass
 
         self.assertIsInstance(
-            construct_active_interaction(_TestInteraction),
+            construct_active_interaction(_TestInteraction, construct_context=construct_context),
             _TestInteraction
         )
 
@@ -37,7 +37,7 @@ class ActiveInteractionConstructorTest(unittest.TestCase):
         with self.assertRaises(Exception):
             # Значение неверного типа передано намеренно
             # noinspection PyTypeChecker
-            construct_active_interaction('foo')
+            construct_active_interaction('foo', construct_context=construct_context)
 
 
 class ActiveInteractionTest(DialogTestCase):

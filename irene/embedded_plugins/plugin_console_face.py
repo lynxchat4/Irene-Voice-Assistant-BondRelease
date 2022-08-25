@@ -1,8 +1,8 @@
 from irene.brain.abc import TextOutputChannel
 from irene.brain.inbound_messages import PlainTextMessage
 from irene.brain.output_pool import OutputPoolImpl
+from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin
-from irene.plugin_loader.plugins_abc import PluginManager
 from irene.plugin_loader.run_operation import call_all_as_wrappers
 
 
