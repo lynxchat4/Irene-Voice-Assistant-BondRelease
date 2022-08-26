@@ -1,8 +1,11 @@
-from irene.brain.abc import TextOutputChannel
+from typing import Callable, Optional
+
+from irene.brain.abc import TextOutputChannel, VAContext, VAApi, InboundMessage
+from irene.brain.contexts import BaseContextWrapper
 from irene.brain.inbound_messages import PlainTextMessage
 from irene.brain.output_pool import OutputPoolImpl
 from irene.plugin_loader.abc import PluginManager
-from irene.plugin_loader.magic_plugin import MagicPlugin
+from irene.plugin_loader.magic_plugin import MagicPlugin, before, operation, after
 from irene.plugin_loader.run_operation import call_all_as_wrappers
 
 
@@ -14,15 +17,30 @@ class ConsoleOutputChannel(TextOutputChannel):
         print(self.prefix + text)
 
 
+class ConsoleMessage(PlainTextMessage):
+    pass
+
+
 class ConsoleFace(MagicPlugin):
     name = 'face_console'
     version = '1.0.0'
 
     config = {
         'enabled': False,
+        'skipTriggerPhrase': False,
         'prompt': '> ',
         'reply_prefix': '< ',
     }
+
+    config_comment = """
+    Настройки консольного текстового интерфейса.
+
+    Доступные параметры:
+    enabled                 - включает текстовый консольный интерфейс
+    skipTriggerPhrase       - если установлен в true, консольный интерфейс не требует использования имени ассистента \
+для запуска команд
+    prompt, reply_prefix    - префиксы вводимых пользователем команд и ответов ассистента
+    """
 
     def __init__(self):
         super().__init__()
@@ -32,6 +50,32 @@ class ConsoleFace(MagicPlugin):
         self._outputs = OutputPoolImpl((
             ConsoleOutputChannel(self.config.get('reply_prefix', '< ')),
         ))
+
+    @operation('create_root_context')
+    @before('add_trigger_phrase')
+    @after('load_commands')
+    def skip_trigger_phrase(
+            self,
+            nxt: Callable,
+            prev: Optional[VAContext],
+            *args, **kwargs,
+    ):
+        if prev is None:
+            raise ValueError()
+
+        if not self.config['skipTriggerPhrase']:
+            return nxt(prev, *args, **kwargs)
+
+        class TriggerPhraseSkipContext(BaseContextWrapper):
+            def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
+                if isinstance(message.get_original(), ConsoleMessage):
+                    return prev.handle_command(va, message)
+
+                return super().handle_command(va, message)
+
+        return TriggerPhraseSkipContext(
+            nxt(prev, *args, **kwargs)
+        )
 
     def run(self, pm: PluginManager, *_args, **_kwargs):
         if not self.config.get('enabled', False):
@@ -50,4 +94,4 @@ class ConsoleFace(MagicPlugin):
                     print("\nКонсольный поток ввода завершён.")
                     break
 
-                send_message(PlainTextMessage(text, self._outputs))
+                send_message(ConsoleMessage(text, self._outputs))

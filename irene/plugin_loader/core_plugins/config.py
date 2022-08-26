@@ -227,7 +227,7 @@ class ConfigPlugin(MagicPlugin):
             else:
                 if scope in self._config_comments:
                     for line in self._config_comments[scope].strip().split('\n'):
-                        f.write('# ' + line + '\n')
+                        f.write('# ' + line.strip() + '\n')
 
                 return yaml.dump(config, f, Dumper, **self.config['yamlDumpOptions'])
 
