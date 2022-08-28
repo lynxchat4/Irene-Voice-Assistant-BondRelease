@@ -1,5 +1,5 @@
 #from voiceassmain import play_voice_assistant_speech
-from _orig.vacore import VACore
+from vacore import VACore
 # based on EnjiRouz realization https://github.com/EnjiRouz/Voice-Assistant-App/blob/master/app.py
 
 # есть более эффективная реализация в plugin_urlopener

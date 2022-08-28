@@ -4,7 +4,7 @@
 import pyautogui
 
 # from voiceassmain import play_voice_assistant_speech
-from _orig.vacore import VACore
+from vacore import VACore
 
 # опции
 useYandexMusicShortcuts = False

@@ -3,7 +3,7 @@
 
 import random
 
-from _orig.vacore import VACore
+from vacore import VACore
 
 
 # функция на старте

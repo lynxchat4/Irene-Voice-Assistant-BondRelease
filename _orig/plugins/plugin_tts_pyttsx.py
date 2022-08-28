@@ -4,8 +4,7 @@
 import os
 
 import pyttsx3
-
-from _orig.vacore import VACore
+from vacore import VACore
 
 modname = os.path.basename(__file__)[:-3] # calculating modname
 

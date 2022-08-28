@@ -1,4 +1,5 @@
 from irene.brain.brain_plugin import BrainPlugin
+from irene.compatibility.compatibility_plugin import OriginalCompatibilityPlugin
 from irene.plugin_loader.core_plugins import ConfigPlugin, PluginDiscoveryPlugin
 from irene.plugin_loader.core_plugins.logging import LoggingPlugin
 from irene.plugin_loader.launcher import launch_application
@@ -9,6 +10,7 @@ launch_application(
         PluginDiscoveryPlugin(),
         LoggingPlugin(),
         BrainPlugin(),
+        OriginalCompatibilityPlugin(),
     ],
     canonical_launch_command='python -m irene',
 )

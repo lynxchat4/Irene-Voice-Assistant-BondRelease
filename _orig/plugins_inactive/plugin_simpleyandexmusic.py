@@ -3,8 +3,7 @@
 import time
 
 import pyautogui
-
-from _orig.vacore import VACore
+from vacore import VACore
 
 
 # функция на старте

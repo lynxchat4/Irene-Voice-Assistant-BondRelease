@@ -1,4 +1,4 @@
-from _orig.vacore import VACore
+from vacore import VACore
 
 # функция на старте
 def start(core:VACore):

@@ -19,6 +19,7 @@ __all__ = [
     'OutputChannel',
     'OutputChannelNotFoundError',
     'TextOutputChannel',
+    'SpeechOutputChannel',
     'AudioOutputChannel',
     'InboundMessage',
     'Brain',
@@ -289,6 +290,26 @@ class VAApiExt(VAApi, ABC):
 
         ch.send(text, **kwargs)
 
+    def say_speech(self, text: str, **kwargs):
+        """
+        Аналогично ``say(...)`` выводит заданный текст, но выбирает только каналы, преобразующие текст в речь.
+
+        Args:
+            text:
+                текст сообщения
+            **kwargs:
+                дополнительные опции
+
+        Raises:
+            OutputChannelNotFoundError - если не найден подходящий канал вывода
+        """
+        ch: SpeechOutputChannel
+
+        # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
+        ch, = self.get_outputs_preferring_relevant(SpeechOutputChannel)  # type: ignore
+
+        ch.send(text, **kwargs)
+
     def play_audio(self, file_path: str, **kwargs):
         """
         Воспроизводит аудио-файл.
@@ -334,6 +355,12 @@ class TextOutputChannel(ABC, OutputChannel):
                 дополнительные опции, набор зависит от конкретной реализации класса.
                 Реализации должны игнорировать неизвестные им опции.
         """
+
+
+class SpeechOutputChannel(TextOutputChannel, ABC):
+    """
+    Текстовый канал, выведенный в который текст будет преобразован в речь.
+    """
 
 
 class AudioOutputChannel(ABC, OutputChannel):

@@ -5,8 +5,7 @@ import os
 
 import sounddevice as sound_device
 import soundfile as sound_file
-
-from _orig.vacore import VACore
+from vacore import VACore
 
 modname = os.path.basename(__file__)[:-3] # calculating modname
 
