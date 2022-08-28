@@ -258,12 +258,12 @@ class ConfigPlugin(MagicPlugin):
         for step in pm.get_operation_sequence('receive_config'):
             step.step(self._get_config(step.plugin.name, {}))
 
-    def plugin_discovered(self, pm: PluginManager, plugin: Plugin, *_args, **_kwargs):
+    def plugin_discovered(self, _pm: PluginManager, plugin: Plugin, *_args, **_kwargs):
         self._process_plugin_config_steps(plugin.get_operation_steps('config'))
 
         for step in plugin.get_operation_steps('receive_config'):
             step.step(self._get_config(step.plugin.name, {}))
 
-    def terminate(self, pm: PluginManager, *_args, **_kwargs):
+    def terminate(self, *_args, **_kwargs):
         for scope in self._configs.keys():
             self._store_config(scope)

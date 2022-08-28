@@ -187,7 +187,7 @@ SpeechRecognition - классический движок для запуска 
 
 Если вы хотите что-то добавить в проект, хорошо ознакомиться с
 Политикой 
-[CONTRIBUTING.md](/CONTRIBUTING.md)
+[CONTRIBUTING.md](/_orig/CONTRIBUTING.md)
 
 Коротко:
 * Под плагины желательно делать отдельные Github-проекты (или размещать их где-то еще), которые вы готовы поддерживать. Ссылки можно кидать в [https://github.com/janvarev/Irene-Voice-Assistant/issues/1](https://github.com/janvarev/Irene-Voice-Assistant/issues/1), чтобы ваш плагин нашли другие. Кидать дополнительные плагины в этот проект не нужно - у меня нет времени и сил поддерживать то, в чём я не разбираюсь.

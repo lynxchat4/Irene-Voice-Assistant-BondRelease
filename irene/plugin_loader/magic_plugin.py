@@ -14,6 +14,14 @@ T = TypeVar('T')
 
 
 def operation(op_name: str) -> Callable[[T], T]:
+    """
+    Помечает аттрибут магического плагина как шаг, для заданной операции.
+
+    Args:
+        op_name:
+            имя операции
+    """
+
     def decorator(f):
         setattr(f, _SIMPLE_PLUGIN_OP_NAME, op_name)
         return f
@@ -22,6 +30,14 @@ def operation(op_name: str) -> Callable[[T], T]:
 
 
 def after(*dependencies) -> Callable[[T], T]:
+    """
+    Помечает аттрибут магического плагина как шаг, зависящий от других шагов.
+
+    Args:
+        *dependencies:
+            имена шагов, от которых зависит этот шаг
+    """
+
     def decorator(f):
         setattr(f, _SIMPLE_PLUGIN_DEPENDENCIES,
                 (*dependencies, *getattr(f, _SIMPLE_PLUGIN_DEPENDENCIES, ())))
@@ -31,6 +47,21 @@ def after(*dependencies) -> Callable[[T], T]:
 
 
 def before(*reverse_dependencies) -> Callable[[T], T]:
+    """
+    Помечает аттрибут магического плагина как шаг, имеющий обратную зависимость от других шагов.
+
+    Обратная зависимость шага ``A`` от шага ``B`` эквивалентна прямой зависимости шага ``B`` от шага ``A``.
+
+    Если зависимости между шагами определяют порядок выполнения шагов, то прямая зависимость ``A`` от ``B`` означает,
+    что ``A`` зависит от результата выполнения ``B`` и будет выполнен после ``B``.
+    Обратная зависимость ``A`` от ``B``, в свою очередь означает, что ``A`` должен быть выполнен до ``B``, например,
+    чтобы произвести какие-либо дополнительные модификации данных, используемых шагом ``B``.
+
+    Args:
+        *reverse_dependencies:
+            имена шагов, зависящих от этого шага
+    """
+
     def decorator(f):
         setattr(f, _SIMPLE_PLUGIN_REVERSE_DEPENDENCIES,
                 (*reverse_dependencies, *getattr(f, _SIMPLE_PLUGIN_REVERSE_DEPENDENCIES, ())))
@@ -40,6 +71,14 @@ def before(*reverse_dependencies) -> Callable[[T], T]:
 
 
 def step_name(name: str) -> Callable[[T], T]:
+    """
+    Явно устанавливает имя шага, созданного из аттрибута магического плагина.
+
+    Args:
+        name:
+            имя шага
+    """
+
     def decorator(f):
         setattr(f, _SIMPLE_PLUGIN_STEP_NAME, name)
         return f
@@ -84,6 +123,28 @@ def extract_operations_from(
 
 
 class MagicPlugin(Plugin, ABC):
+    """
+    Базовый класс для плагинов, предоставляющий дополнительные функции, упрощающие разработку плагинов.
+
+    Все публичные (имя которых не начинается с ``_``) методы и аттрибуты плагинов, наследующихся от этого класса
+    рассматриваются как шаги операций.
+
+    >>> class MyPlugin(MagicPlugin):
+    >>>     def init(self, *args, **kwargs):
+    >>>         # Метод становится шагом операции "init", без каких-либо зависимостей и с уникальным именем, зависящим
+    >>>         # от имени плагина
+    >>>         ...
+    >>>     @operation('init')
+    >>>     def init2(self, *args, **kwargs):
+    >>>         # Метод становится ещё одним шагом операции "init"
+    >>>         ...
+    >>>     @operation('terminate')
+    >>>     @after('kill_brain')
+    >>>     def terminate(self, *_, **__):
+    >>>         # Метод становится шагом операции "terminate", зависящим от (выполняющимся после) шага "kill_brain"
+    >>>         ...
+    """
+
     def __init__(self):
         super().__init__()
         self.__steps = extract_operations_from(self, self)
