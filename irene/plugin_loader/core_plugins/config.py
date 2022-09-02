@@ -6,7 +6,8 @@ from os import environ, listdir
 from os.path import isdir, isfile, join, basename
 from pathlib import Path
 from shutil import copyfile
-from typing import Any, Iterable
+from textwrap import dedent
+from typing import Any, Iterable, Optional
 
 import yaml
 
@@ -227,7 +228,7 @@ class ConfigPlugin(MagicPlugin):
             else:
                 if scope in self._config_comments:
                     for line in self._config_comments[scope].strip().split('\n'):
-                        f.write('# ' + line.strip() + '\n')
+                        f.write('# ' + line + '\n')
 
                 return yaml.dump(config, f, Dumper, **self.config['yamlDumpOptions'])
 
@@ -245,11 +246,11 @@ class ConfigPlugin(MagicPlugin):
             if hasattr(step.plugin, 'config'):
                 setattr(step.plugin, 'config', cfg)
 
-            self._config_comments[step.plugin.name] = getattr(
+            self._config_comments[step.plugin.name] = dedent(getattr(
                 step.plugin,
                 'config_comment',
                 f'Настройки плагина {step.plugin}'
-            )
+            ))
 
     @step_name('config')
     def bootstrap(self, pm: PluginManager, *_args, **_kwargs):
@@ -267,3 +268,66 @@ class ConfigPlugin(MagicPlugin):
     def terminate(self, *_args, **_kwargs):
         for scope in self._configs.keys():
             self._store_config(scope)
+
+    def register_fastapi_endpoints(self, router, pm: PluginManager, *_args, **_kwargs):
+        from fastapi import APIRouter, Body, HTTPException
+        from pydantic import BaseModel, Field
+
+        r: APIRouter = router
+
+        class ConfigModel(BaseModel):
+            scope: str = Field(
+                title="Имя конфига",
+                description="Как правило, совпадает с именем плагина, которому принадлежит конфиг",
+            )
+            config: dict[str, Any] = Field(
+                title="Текущее состояние конфига",
+            )
+            comment: Optional[str] = Field(
+                title="Дополнительный комментарий о настройке плагина",
+            )
+
+        @r.get(
+            '/configs',
+            response_model=list[ConfigModel],
+            name="Получение всех конфигов",
+        )
+        def get_all_configs() -> list[ConfigModel]:
+            """
+            Возвращает список всех конфигов с их текущим состоянием.
+            """
+            return [
+                ConfigModel(
+                    scope=scope,
+                    config=self._configs[scope],
+                    comment=self._config_comments.get(scope, None),
+                )
+                for scope in self._configs
+            ]
+
+        @r.patch(
+            '/configs/{scope}',
+            name="Обновление одного конфига",
+        )
+        def update_scope_config(scope: str, config: dict[str, Any] = Body()):
+            """
+            Обновляет один из конфигов.
+
+            Значения из переданного документа записываются в текущее состояние конфига заменяя имеющиеся значения.
+            Если какие-то поля отсутствуют в переданном документе, то значения в текущем состоянии останутся
+            неизменными.
+
+            В некоторых случаях изменения могут повлиять на работу плагинов сразу же, иногда может понадобиться
+            перезапуск приложения.
+            """
+            try:
+                current = self._configs[scope]
+            except KeyError:
+                raise HTTPException(404)
+
+            for k, v in config.items():
+                current[k] = v
+
+            for step in pm.get_operation_sequence('receive_config'):
+                if step.plugin.name is scope:
+                    step.step(current)

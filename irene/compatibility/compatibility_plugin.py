@@ -19,6 +19,7 @@ class _OriginalPlugin(MagicPlugin):
 
     def __init__(self, module: ModuleType, core_config: dict[str, Any]):
         self.name = getattr(module, 'modname', module.__name__)
+        self.__doc__ = getattr(module, '__doc__', None)
 
         self._core = VACore(self.name, core_config)
 

@@ -154,11 +154,12 @@ class MagicPlugin(Plugin, ABC):
 
 
 class MagicModulePlugin(Plugin):
-    __slots__ = ('name', 'version', '_module', '_steps')
+    __slots__ = ('name', 'version', '_module', '_steps', '__doc__')
 
     def __init__(self, module: ModuleType):
         self.name = getattr(module, 'name', module.__name__)
         self.version = getattr(module, 'version', '0.0.0')
+        self.__doc__ = getattr(module, '__doc__', None)
         self._steps = extract_operations_from(module, self)
         self._module = module
 

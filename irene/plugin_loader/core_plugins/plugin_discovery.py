@@ -22,7 +22,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
         'pluginPaths': [
             "{irene_path}/embedded_plugins/plugin_*.py",
             "{user_home}/irene-plugins/plugin_*.py",
-            "{python_path}/irene-plugin-*/plugin_*.py",
+            "{python_path}/irene_plugin_*/plugin_*.py",
         ],
         "excludePlugins": []
     }
@@ -122,7 +122,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
     @operation('discover_plugins_in_module')
     @step_name('discover_magic_plugin_module')
     @after('discover_explicit_plugins')
-    def discover_magic_plugin_module(self, pm: PluginManager, module: ModuleType, *_args, **_kwargs):
+    def discover_magic_plugin_module(self, _pm: PluginManager, module: ModuleType, *_args, **_kwargs):
         name = getattr(module, 'name', None)
 
         if not isinstance(name, str):
@@ -134,3 +134,38 @@ class PluginDiscoveryPlugin(MagicPlugin):
             return None
 
         return MagicModulePlugin(module),
+
+    def register_fastapi_endpoints(self, router, *_args, **_kwargs):
+        from fastapi import APIRouter
+        from pydantic import BaseModel, Field
+
+        r: APIRouter = router
+
+        class PluginModel(BaseModel):
+            name: str = Field(
+                title="Имя плагина",
+            )
+            version: str = Field(
+                title="Версия плагина",
+            )
+            docs: Optional[str] = Field(
+                title="Документация плагина",
+                description="Извлекается из docstring'а класса или модуля плагина",
+            )
+
+        @r.get(
+            '/plugins',
+            response_model=list[PluginModel],
+            name="Получение списка всех пользовательских плагинов",
+        )
+        def list_all_user_plugins():
+            """
+            Возвращает список всех плагинов с их краткими описаниями.
+            """
+            return [
+                PluginModel(
+                    name=plugin.name,
+                    version=plugin.version,
+                    docs=getattr(plugin, '__doc__', None)
+                ) for plugin in self._plugins
+            ]
