@@ -7,7 +7,8 @@ import uvicorn
 from fastapi import FastAPI, APIRouter
 
 from irene.plugin_loader.abc import PluginManager
-from irene.plugin_loader.magic_plugin import MagicPlugin
+from irene.plugin_loader.magic_plugin import MagicPlugin, step_name
+from irene.plugin_loader.run_operation import call_all
 
 
 class WebServerPlugin(MagicPlugin):
@@ -42,6 +43,12 @@ class WebServerPlugin(MagicPlugin):
             version=self.version,
         )
 
+        call_all(pm.get_operation_sequence('register_fastapi_routes'), app, pm)
+
+        return app
+
+    @step_name('register_plugin_api_endpoints')
+    def register_fastapi_routes(self, app: FastAPI, pm: PluginManager, *_args, **_kwargs):
         api_root_router = APIRouter()
 
         for step in pm.get_operation_sequence('register_fastapi_endpoints'):
@@ -52,8 +59,6 @@ class WebServerPlugin(MagicPlugin):
             api_root_router.include_router(router, prefix=f'/{step.plugin.name}')
 
         app.include_router(api_root_router, prefix='/api')
-
-        return app
 
     def run(self, pm: PluginManager, *_args, **_kwargs):
         self._thread = threading.current_thread()
