@@ -1,6 +1,6 @@
 <script setup lang="ts">
-  // import ConfigsPage from './components/config/ConfigsPage.vue'
-  import DialogPage from './components/dialog/DialogPage.vue';
+// import ConfigsPage from './components/config/ConfigsPage.vue'
+import DialogPage from './components/dialog/DialogPage.vue';
 </script>
 
 <template>
@@ -9,4 +9,5 @@
 </template>
 
 <style scoped>
+
 </style>

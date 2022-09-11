@@ -1,0 +1,7 @@
+body {
+    background: #eee;
+
+    --content-background: #FFF;
+    --in-message-background: #AFA;
+    --out-message-background: rgb(255, 210, 250);
+}

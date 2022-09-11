@@ -23,6 +23,7 @@ class _TextOutputImpl(TextOutputChannel, ProtocolHandler):
 
     def __init__(self, connection: Connection):
         self._connection = connection
+        self._connection.register_output(self)
 
     def start(self):
         pass

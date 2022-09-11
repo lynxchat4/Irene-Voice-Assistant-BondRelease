@@ -8,3 +8,8 @@ export const NegotiationAgreeMessage = Message.extend({
     type: z.enum(['negotiate/agree']),
     protocols: z.array(z.string()),
 });
+
+export const TextOutputMessage = Message.extend({
+    type: z.enum(['out.text-plain/text']),
+    text: z.string(),
+});

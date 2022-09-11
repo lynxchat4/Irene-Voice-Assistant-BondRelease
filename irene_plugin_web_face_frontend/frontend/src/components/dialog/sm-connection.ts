@@ -1,5 +1,6 @@
-import { createMachine, send, sendParent, type AnyEventObject, type InvokeCallback } from "xstate";
+import { createMachine, send, type AnyEventObject, type InvokeCallback } from "xstate";
 import { pure } from "xstate/lib/actions";
+import { busConnector, EventBus } from "../eventBus";
 import { NegotiationAgreeMessage } from "./messages";
 import { eventNameForMessageType, eventNameForProtocolName } from "./sm-helpers";
 
@@ -9,8 +10,6 @@ const websocketService = (): InvokeCallback<any, AnyEventObject> => (callback, o
 
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     url.pathname = '/api/face_web/ws';
-
-    console.log('Connecting to ', url);
 
     const ws = new WebSocket(url);
 
@@ -44,12 +43,22 @@ const websocketService = (): InvokeCallback<any, AnyEventObject> => (callback, o
 
         ws.close();
     };
+};
+
+export type Context = {
+    eventBus: EventBus,
+    protocols: string[][],
 }
 
-export const connectionStateMachine = createMachine(
+export const connectionStateMachine = createMachine<Context>(
     {
         id: 'connection',
+        predictableActionArguments: true,
         initial: 'active',
+        invoke: {
+            id: 'eventBus',
+            src: 'eventBus',
+        },
         states: {
             active: {
                 invoke: {
@@ -92,6 +101,17 @@ export const connectionStateMachine = createMachine(
                             WS_RECEIVED: {
                                 actions: ['forwardIncommingMessage'],
                             },
+                            WS_SEND: {
+                                actions: ['forwardToWebsocket'],
+                            },
+                            WS_ERROR: {
+                                target: '#connection.disconnected',
+                                actions: ['notifyDisconnect'],
+                            },
+                            WS_CLOSED: {
+                                target: '#connection.disconnected',
+                                actions: ['notifyDisconnect'],
+                            },
                         },
                     },
                 },
@@ -109,10 +129,11 @@ export const connectionStateMachine = createMachine(
         },
         services: {
             websocket: websocketService,
+            eventBus: busConnector(['WS_SEND']),
         },
         actions: {
             requestNegotiation: send(
-                (context: any) => ({ type: 'WS_SEND', data: { type: 'negotiate/request', protocols: context.protocols } }),
+                (context) => ({ type: 'WS_SEND', data: { type: 'negotiate/request', protocols: context.protocols } }),
                 { to: 'websocket' },
             ),
             forwardWsProtocolEvents: pure(
@@ -121,10 +142,15 @@ export const connectionStateMachine = createMachine(
 
                     return protocols
                         .filter(Boolean)
-                        .map(proto => sendParent({ type: eventNameForProtocolName(proto) }))
+                        .map(proto => send({ type: eventNameForProtocolName(proto) }, { to: 'eventBus' }))
                 }
             ),
-            forwardIncommingMessage: sendParent((_, { data }: AnyEventObject) => ({ type: eventNameForMessageType(data.type), data })),
+            forwardIncommingMessage: send(
+                (_, { data }: AnyEventObject) => ({ type: eventNameForMessageType(data.type), data }),
+                { to: 'eventBus' },
+            ),
+            forwardToWebsocket: send((_, event) => event, { to: 'websocket' }),
+            notifyDisconnect: send({ type: 'WS_DISCONNECTED' }, { to: 'eventBus' }),
         },
     },
 );
