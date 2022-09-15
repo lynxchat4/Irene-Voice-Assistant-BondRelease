@@ -8,7 +8,7 @@ export type Context = {
 
 export const textInputMachine = createMachine<Context>(
     {
-        id: 'textDialog',
+        id: 'textInput',
         predictableActionArguments: true,
         initial: 'inactive',
         invoke: {
@@ -26,7 +26,10 @@ export const textInputMachine = createMachine<Context>(
             indirect_protocol: {
                 on: {
                     IN_TEXT_COMMAND: {
-                        actions: ['sendIndirectMessage'],
+                        actions: [
+                            'sendIndirectMessage',
+                            'sendMessageToHistory',
+                        ],
                     },
                 },
             },
@@ -34,7 +37,10 @@ export const textInputMachine = createMachine<Context>(
                 on: {
                     [eventNameForProtocolName('in.text-indirect')]: undefined,
                     IN_TEXT_COMMAND: {
-                        actions: ['sendDirectMessage'],
+                        actions: [
+                            'sendDirectMessage',
+                            'sendMessageToHistory',
+                        ],
                     },
                 },
             },
@@ -58,6 +64,10 @@ export const textInputMachine = createMachine<Context>(
                 (_, event) => ({ type: 'WS_SEND', data: { type: 'in.text-direct/text', text: event.data } }),
                 { to: 'eventBus' }
             ),
+            sendMessageToHistory: send(
+                (_, event) => ({ type: 'HISTORY_ADD_MESSAGE', data: { direction: 'in', text: event.data } }),
+                { to: 'eventBus' }
+            )
         },
     },
 );

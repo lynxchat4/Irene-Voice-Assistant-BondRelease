@@ -3,6 +3,8 @@ import { interpret } from 'xstate';
 import App from './App.vue'
 import { connectionStateMachine } from './components/dialog/sm-connection';
 import { textInputMachine } from './components/dialog/sm-input-text';
+import { messageHistoryMachine } from './components/dialog/sm-message-history';
+import { plaintextOutputMachine } from './components/dialog/sm-output-plaintext';
 import { EventBus, eventBusKey } from './components/eventBus';
 import './main.css'
 
@@ -34,6 +36,31 @@ app.provide(
             },
         )
     ).start()
-)
+);
+
+app.provide(
+    'messageHistoryMachine',
+    interpret(
+        messageHistoryMachine.withConfig(
+            {},
+            {
+                eventBus,
+                messages: [],
+            },
+        ),
+    ).start()
+);
+
+app.provide(
+    'plaintextOutputMachine',
+    interpret(
+        plaintextOutputMachine.withConfig(
+            {},
+            {
+                eventBus,
+            },
+        ),
+    ).start()
+);
 
 app.mount('#app')

@@ -6,6 +6,8 @@ import Header from '../ui/Header.vue';
 import Message from './Message.vue';
 import ConnectionStatus from './ConnectionStatus.vue';
 import { eventBusKey } from '../eventBus';
+import { useActor } from '@xstate/vue';
+import type { ActorRef } from 'xstate';
 
 const inputValue = ref('');
 
@@ -22,6 +24,7 @@ const sendCommand = () => {
     eventBus?.send('IN_TEXT_COMMAND', command);
 }
 
+const historySm = useActor<ActorRef<any, any>>(inject('messageHistoryMachine') as any);
 </script>
 
 <template>
@@ -31,11 +34,9 @@ const sendCommand = () => {
     <Container>
         <div class="messages-wrapper">
             <div id="messages-feed">
-                <Message :message="{text: 'asdasd', direction: 'out'}" />
-                <Message :message="{text: 'asdasd sdas dasd sda sd sada sda sda asd', direction: 'in'}" />
-                <Message :message="{text: 'asdasd ad dsk v mxcvc kvxcmv kxmvx cmvx', direction: 'out'}" />
-                <Message :message="{text: 'asdasd sd c adcasdc sdcd', direction: 'in'}" />
-                <Message :message="{text: 'asdasd ds sdiu8csj 8vj cvx8cvj jkn', direction: 'out'}" />
+                <template v-for="message in historySm.state.value.context.messages">
+                    <Message :message="message" />
+                </template>
             </div>
             <div class="command-input-wrapper">
                 <input class="command-input" v-model="inputValue" @keydown.enter="sendCommand"

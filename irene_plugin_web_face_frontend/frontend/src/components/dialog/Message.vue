@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 const props = defineProps<{
     message: {
         text: string,
@@ -27,16 +26,17 @@ const props = defineProps<{
     margin-top: 16px;
     padding: 16px;
     border-radius: 16px;
-    box-shadow: 0px 0px 5px #aaa;
 }
 
 .message.in {
-    align-self: flex-start;
+    align-self: flex-end;
     background: var(--in-message-background);
+    border-bottom-right-radius: 0;
 }
 
 .message.out {
-    align-self: flex-end;
+    align-self: flex-start;
     background: var(--out-message-background);
+    border-top-left-radius: 0;
 }
 </style>
