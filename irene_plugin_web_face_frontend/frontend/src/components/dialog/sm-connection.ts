@@ -47,7 +47,7 @@ const websocketService = (): InvokeCallback<any, AnyEventObject> => (callback, o
 
 export type Context = {
     eventBus: EventBus,
-    protocols: string[][],
+    protocols: (string | null)[][],
 }
 
 export const connectionStateMachine = createMachine<Context>(
@@ -142,7 +142,7 @@ export const connectionStateMachine = createMachine<Context>(
 
                     return protocols
                         .filter(Boolean)
-                        .map(proto => send({ type: eventNameForProtocolName(proto) }, { to: 'eventBus' }))
+                        .map(proto => send({ type: eventNameForProtocolName(proto as string) }, { to: 'eventBus' }))
                 }
             ),
             forwardIncommingMessage: send(

@@ -9,7 +9,7 @@ export type Context = {
 
 export const plaintextOutputMachine = createMachine<Context>(
     {
-        id: 'messageHistory',
+        id: 'plaintextOutput',
         predictableActionArguments: true,
         initial: 'inactive',
         invoke: {

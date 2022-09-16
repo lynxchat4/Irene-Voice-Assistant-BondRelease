@@ -22,6 +22,9 @@ def match_files(patterns: Iterable[str]) -> Iterable[str]:
     Returns:
         пути к найденным файлам
     """
+    if isinstance(patterns, str):
+        patterns = patterns,
+
     matching = set()
 
     params = dict(
