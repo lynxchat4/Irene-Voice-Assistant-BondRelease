@@ -27,7 +27,7 @@ export const messageHistoryMachine = createMachine<Context>(
             active: {
                 on: {
                     HISTORY_ADD_MESSAGE: {
-                        actions: ['storeMessage'],
+                        actions: ['storeMessage', 'scrollToBottom'],
                     },
                 },
             },
@@ -43,6 +43,15 @@ export const messageHistoryMachine = createMachine<Context>(
             storeMessage: assign({
                 messages: ({ messages }, { data }) => [...messages, Message.parse(data)],
             }),
+            scrollToBottom: () => {
+                setTimeout(() =>
+                    window.scrollTo({
+                        top: document.body.scrollHeight,
+                        behavior: 'smooth'
+                    }),
+                    100
+                );
+            },
         },
     }
 );

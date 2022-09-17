@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from functools import partial
 from heapq import heappush, heappop
 from queue import Queue, Empty
+from random import choice
 from threading import Thread
 from time import sleep
 from typing import Callable
@@ -10,6 +11,7 @@ from typing import Callable
 import irene.utils.num_to_text_ru as num_to_text
 from irene import VAApiExt
 from irene.brain.abc import OutputChannelNotFoundError
+from irene.plugin_loader.file_match import match_files
 from irene.plugin_loader.magic_plugin import MagicPlugin
 
 female_units_min2 = ((u'минуту', u'минуты', u'минут'), 'f')
@@ -65,7 +67,7 @@ class TimerPlugin(MagicPlugin):
 
     config = {
         'wavRepeatTimes': 2,
-        'wavPath': 'media/timer.wav',
+        'wavPath': '{irene_path}/embedded_plugins/media/timer.wav',
     }
 
     def __init__(self):
@@ -88,7 +90,7 @@ class TimerPlugin(MagicPlugin):
         def done_interaction(va: VAApiExt):
             try:
                 for i in range(self.config['wavRepeatTimes']):
-                    va.play_audio(self.config['wavPath'])
+                    va.play_audio(choice(list(match_files(self.config['wavPath']))))
                     sleep(0.2)
             except OutputChannelNotFoundError:
                 va.say(" ".join(("БИП",) * self.config['wavRepeatTimes']))

@@ -21,7 +21,7 @@ app.provide(
             {},
             {
                 eventBus,
-                protocols: [['out.audio.link', null], ['in.text-direct', 'in.text-indirect'], ['out.text-plain']],
+                protocols: [['out.audio.link'], ['in.text-direct', 'in.text-indirect'], ['out.tts.serverside', 'out.text-plain']],
             },
         )
     ).start()

@@ -121,6 +121,9 @@ class WebAudioOutImpl(AudioOutputChannel, ProtocolHandler):
 
 
 class WebAudioOutputPlugin(MagicPlugin):
+    """
+    Отвечает за вывод аудио на клиенте через протокол ``out.audio.link``.
+    """
     name = 'web-audio-link-output'
     version = '0.1.0'
 

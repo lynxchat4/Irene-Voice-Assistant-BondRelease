@@ -3,11 +3,13 @@ import sys
 from functools import wraps
 from logging import getLogger
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any, Callable, Type, Optional
 
 import irene.compatibility.vacore as vacore_module
 from irene import VAContextSource, VAApiExt
 from irene.compatibility.vacore import VACore
+from irene.face.abc import FileWritingTTS, ImmediatePlaybackTTS
+from irene.face.tts_helpers import file_writing_tts_from_callbacks, immediate_playback_tts_from_callbacks
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin, operation, before
 
@@ -28,12 +30,37 @@ class _OriginalPlugin(MagicPlugin):
 
         self.version = self._manifest.get('version', 'unknown')
 
+        self._file_tts_types: dict[str, Type[FileWritingTTS]] = {}
+        self._immediate_tts_types: dict[str, Type[ImmediatePlaybackTTS]] = {}
+
         try:
             self._core.config = self._manifest['default_options']
             self.config = self._core.config
             self.receive_config = self._receive_config
         except KeyError:
             pass
+
+        try:
+            ttss: dict[str, tuple] = self._manifest['tts']
+        except KeyError:
+            pass
+        else:
+            for (name, callbacks) in ttss.items():
+                if callbacks[1] is not None:
+                    self._immediate_tts_types[name] = immediate_playback_tts_from_callbacks(
+                        name,
+                        self._core,
+                        callbacks[0],
+                        callbacks[1],
+                    )
+
+                if len(callbacks) >= 3 and callbacks[2] is not None:
+                    self._file_tts_types[name] = file_writing_tts_from_callbacks(
+                        name,
+                        self._core,
+                        callbacks[0],
+                        callbacks[2],
+                    )
 
         # вызов конструктора после присвоения `config` чтобы MagicPlugin смог его (config) заметить
         super().__init__()
@@ -80,9 +107,17 @@ class _OriginalPlugin(MagicPlugin):
     def define_commands(self, *_args, **_kwargs):
         return self._manifest.get('commands', {})
 
-    def create_tts(self, *_args, **_kwargs):
-        # TODO
-        ...
+    def create_file_tts(self, nxt, prev: Optional[FileWritingTTS], config: dict[str, Any], *args, **kwargs):
+        if (tts_type := self._file_tts_types.get(config.get('type', None), None)) is not None:
+            prev = prev or tts_type()
+
+        return nxt(prev, config, *args, **kwargs)
+
+    def create_immediate_tts(self, nxt, prev: Optional[ImmediatePlaybackTTS], config: dict[str, Any], *args, **kwargs):
+        if (tts_type := self._immediate_tts_types.get(config.get('type', None), None)) is not None:
+            prev = prev or tts_type()
+
+        return nxt(prev, config, *args, **kwargs)
 
     def create_audio_channel(self, *_args, **_kwargs):
         # TODO
@@ -98,7 +133,7 @@ class OriginalCompatibilityPlugin(MagicPlugin):
 
     config = {
         "mpcIsUse": True,
-        "mpcHcPath": "C:\Program Files (x86)\K-Lite Codec Pack\MPC-HC64\mpc-hc64_nvo.exe",
+        "mpcHcPath": "C:\\Program Files (x86)\\K-Lite Codec Pack\\MPC-HC64\\mpc-hc64_nvo.exe",
         "mpcIsUseHttpRemote": False,
 
         # TODO: Нужен способ передавать этот флаг (и вообще учитывать оффлайн/онлайн) для новых плагинов тоже
