@@ -1,3 +1,4 @@
+from os.path import isfile, join, dirname
 from typing import Any, Optional
 
 from irene import VAApiExt
@@ -36,6 +37,15 @@ class VACore:
 
     def play_voice_assistant_speech(self, text: str):
         return self.say(text)
+
+    def play_wav(self, wavfile: str):
+        if not isfile(wavfile):
+            p = join(dirname(__file__), '../embedded_plugins', wavfile)
+
+            if isfile(p):
+                wavfile = p
+
+        self.va.play_audio(wavfile)
 
     mpcHcPath: str
     mpcIsUse: bool
