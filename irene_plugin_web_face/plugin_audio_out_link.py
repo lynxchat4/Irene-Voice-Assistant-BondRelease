@@ -18,18 +18,54 @@ from irene_plugin_web_face.protocol import MT_OUT_AUDIO_LINK_PLAYBACK_PROGRESS, 
 
 
 class PlaybackEndSyncer:
+    """
+    Обеспечивает синхронное ожидание окончания воспроизведения аудио на стороне клиента.
+
+    Новый экземпляр ``PlaybackEndSyncer`` должен создаваться на каждый случай воспроизведения звука на клиенте.
+
+    Метод ``wait`` блокирует выполнение потока, в котором он был вызван до тех пор пока не случится одно из следующих
+    событий:
+
+    - воспроизведение завершится штатно, сервер будет оповещён об этом и вызовет метод ``playback_finished``
+    - сервер достаточно долго не получал подтверждений, что клиент занят воспроизведением (при получении такого
+      подтверждения сервер должен вызывать метод ``extend_timeout`` и интервалом чуть большим, чем время до ожидаемого
+      получения следующего подтверждения)
+    """
+
+    __slots__ = ('_evt', '_timeout_at')
+
     def __init__(self, initial_timeout: float):
+        """
+        Args:
+            initial_timeout:
+                изначальная продолжительность ожидания
+        """
         self._evt = Event()
         self._timeout_at: datetime
         self.extend_timeout(initial_timeout)
 
-    def extend_timeout(self, dt):
+    def extend_timeout(self, dt: float):
+        """
+        Продлевает время ожидания окончания воспроизведения.
+        Если метод вызван до истечения предыдущего интервала ожидания, то новый интервал закончится приблизительно
+        через ``dt`` секунд после окончания вызова ``extend_timeout``.
+
+        Args:
+            dt:
+                дополнительная продолжительность ожидания в секундах
+        """
         self._timeout_at = datetime.utcnow() + timedelta(seconds=dt)
 
     def playback_finished(self):
+        """
+        Принудительно завершает ожидание.
+        """
         self._evt.set()
 
     def wait(self):
+        """
+        Блокирует поток выполнения пока воспроизведение не завершится.
+        """
         while not self._evt.is_set():
             now = datetime.utcnow()
             dt = (self._timeout_at - now).total_seconds()
@@ -41,6 +77,8 @@ class PlaybackEndSyncer:
 
 
 class FileBindings:
+    __slots__ = ('_path_prefix', '_file_bindings')
+
     def __init__(self, path_prefix: str):
         self._path_prefix = path_prefix
         self._file_bindings: dict[str, str] = {}
