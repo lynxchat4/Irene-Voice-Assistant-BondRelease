@@ -30,13 +30,13 @@ const props = defineProps<{
 
 .message.in {
     align-self: flex-end;
-    background: var(--in-message-background);
+    background: var(--background-in-message);
     border-bottom-right-radius: 0;
 }
 
 .message.out {
     align-self: flex-start;
-    background: var(--out-message-background);
+    background: var(--background-out-message);
     border-top-left-radius: 0;
 }
 </style>

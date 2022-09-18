@@ -10,6 +10,7 @@ const websocketService = (): InvokeCallback<any, AnyEventObject> => (callback, o
 
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     url.pathname = '/api/face_web/ws';
+    url.hash = ''
 
     const ws = new WebSocket(url);
 

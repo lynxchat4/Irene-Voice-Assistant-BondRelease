@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { inject, ref } from 'vue';
 
-import Container from '../ui/Container.vue';
-import Header from '../ui/Header.vue';
 import Message from './Message.vue';
-import ConnectionStatus from './ConnectionStatus.vue';
 import { eventBusKey } from '../eventBus';
 import { useActor } from '@xstate/vue';
 import type { ActorRef } from 'xstate';
@@ -28,28 +25,33 @@ const historySm = useActor<ActorRef<any, any>>(inject('messageHistoryMachine') a
 </script>
 
 <template>
-    <Header>
-        <ConnectionStatus />
-    </Header>
-    <Container>
-        <div class="messages-wrapper">
-            <div id="messages-feed">
-                <template v-for="message in historySm.state.value.context.messages">
-                    <Message :message="message" />
-                </template>
-            </div>
-            <div class="command-input-wrapper">
-                <input class="command-input" v-model="inputValue" @keydown.enter="sendCommand"
-                    placeholder="Введи сообщение" />
-                <button @click="sendCommand">&gt;</button>
+    <div class="messages-wrapper">
+        <div id="messages-feed">
+            <template v-for="message in historySm.state.value.context.messages">
+                <Message :message="message" />
+            </template>
+            <div v-if="historySm.state.value.context.messages.length === 0" class="empty-feed">
+                <p>💬</p>
+                <p>Пока ничего нет...</p>
             </div>
         </div>
-    </Container>
+        <div class="command-input-wrapper">
+            <input class="command-input" v-model="inputValue" @keydown.enter="sendCommand"
+                placeholder="Введи сообщение" />
+            <button @click="sendCommand">&gt;</button>
+        </div>
+    </div>
 </template>
 
 <style scoped>
 .messages-wrapper {
     display: grid;
+}
+
+.empty-feed {
+    text-align: center;
+    margin-bottom: auto;
+    margin-top: auto;
 }
 
 .command-input-wrapper {
@@ -80,7 +82,7 @@ input.command-input {
 
 .command-input-wrapper>button {
     border: none;
-    background: var(--content-background);
+    background: var(--background-content);
     padding: 16px;
 }
 

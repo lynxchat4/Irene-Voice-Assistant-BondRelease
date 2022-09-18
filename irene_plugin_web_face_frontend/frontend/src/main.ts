@@ -1,6 +1,10 @@
 import { createApp } from 'vue'
+import { createRouter, createWebHashHistory } from 'vue-router';
 import { interpret } from 'xstate';
 import App from './App.vue'
+import ConfigsPageVue from './components/config/ConfigsPage.vue';
+import DialogPageVue from './components/dialog/DialogPage.vue';
+import HeaderTitleVue from './components/ui/HeaderTitle.vue';
 import { connectionStateMachine } from './components/dialog/sm-connection';
 import { textInputMachine } from './components/dialog/sm-input-text';
 import { messageHistoryMachine } from './components/dialog/sm-message-history';
@@ -75,5 +79,41 @@ app.provide(
         ),
     ).start()
 );
+
+const router = createRouter({
+    history: createWebHashHistory(),
+    routes: [
+        {
+            path: '/',
+            components: {
+                main: DialogPageVue,
+                heading: HeaderTitleVue,
+            },
+            props: {
+                heading: {
+                    text: 'Ирина',
+                },
+            },
+        },
+        {
+            path: '/config',
+            components: {
+                main: ConfigsPageVue,
+                heading: HeaderTitleVue,
+            },
+            props: {
+                heading: {
+                    text: 'Настройки',
+                },
+            },
+        },
+        {
+            path: '/:path(.*)*',
+            redirect: '/',
+        }
+    ],
+});
+
+app.use(router);
 
 app.mount('#app')

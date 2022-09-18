@@ -7,6 +7,15 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   build: {
     outDir: '../frontend-dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'config-page': [
+            './src/components/config/ConfigsPage.vue',
+          ],
+        },
+      },
+    },
   },
   plugins: [vue()],
   resolve: {
@@ -22,5 +31,5 @@ export default defineConfig({
         ws: true,
       }
     }
-  }
-})
+  },
+});

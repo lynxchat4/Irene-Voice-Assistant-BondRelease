@@ -1,13 +1,11 @@
 <script setup lang="ts">
-// import ConfigsPage from './components/config/ConfigsPage.vue'
-import DialogPage from './components/dialog/DialogPage.vue';
+import Header from './components/shared/Header.vue';
+import Container from './components/ui/Container.vue';
 </script>
 
 <template>
-  <!-- <ConfigsPage></ConfigsPage> -->
-  <DialogPage></DialogPage>
+  <Header />
+  <Container>
+    <RouterView name="main" />
+  </Container>
 </template>
-
-<style scoped>
-
-</style>

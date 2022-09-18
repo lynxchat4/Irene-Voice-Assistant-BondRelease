@@ -11,6 +11,7 @@ export type Context = {
 export const configMachine = createMachine<Context>(
     {
         id: 'config-sm',
+        predictableActionArguments: true,
         initial: 'loading',
         schema: {
             context: {} as Context,

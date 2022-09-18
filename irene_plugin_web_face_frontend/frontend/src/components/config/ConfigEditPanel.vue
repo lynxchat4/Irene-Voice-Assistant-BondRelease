@@ -33,7 +33,7 @@ const save = () => {
 </script>
 
 <template>
-    <div class="edit-panel" :class="{ open }" tabindex="-1" @keyup.esc="onCancel">
+    <aside class="edit-panel" :class="{ open }" tabindex="-1" @keyup.esc="onCancel">
         <template v-if="open && config">
             <div class="edit-container">
                 <Markdown :source="config.comment" :linkify="true" />
@@ -44,7 +44,7 @@ const save = () => {
                 <button @click="() => onCancel()">Отмена</button>
             </div>
         </template>
-    </div>
+    </aside>
 </template>
 
 <style scoped>
@@ -61,6 +61,7 @@ const save = () => {
     padding: 16px;
     box-sizing: border-box;
     grid-template-rows: 1fr min-content;
+    z-index: var(--z-index-overlay);
 }
 
 .edit-panel.open {

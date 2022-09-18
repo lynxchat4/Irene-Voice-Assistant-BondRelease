@@ -1,7 +1,7 @@
 <template>
-    <div class="container" >
+    <main class="container" >
         <slot></slot>
-    </div>
+    </main>
 </template>
 
 <style>
@@ -12,7 +12,7 @@
         box-sizing: border-box;
         margin: auto;
         min-height: 100vh;
-        background: var(--content-background);
+        background: var(--background-content);
         box-shadow: 1px 1px 5px #aaa;
     }
 </style>
