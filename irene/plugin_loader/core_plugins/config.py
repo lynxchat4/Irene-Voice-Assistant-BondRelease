@@ -305,6 +305,26 @@ class ConfigPlugin(MagicPlugin):
                 for scope in self._configs
             ]
 
+        @r.get(
+            '/configs/{scope}',
+            response_model=ConfigModel,
+            name="Получение одного конфига",
+        )
+        def get_one_config(scope: str) -> ConfigModel:
+            """
+            Возвращает один конфиг.
+            """
+            try:
+                cfg = self._configs[scope]
+            except KeyError:
+                raise HTTPException(404)
+
+            return ConfigModel(
+                scope=scope,
+                config=cfg,
+                comment=self._config_comments.get(scope, None),
+            )
+
         @r.patch(
             '/configs/{scope}',
             name="Обновление одного конфига",

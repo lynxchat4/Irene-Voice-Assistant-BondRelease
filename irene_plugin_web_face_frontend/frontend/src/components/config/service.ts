@@ -17,6 +17,12 @@ export const fetchConfigs = async () => {
     return ConfigList.parse(res.data);
 }
 
+export const fetchConfig = async (scope: string) => {
+    const res = await axios.get(`/api/config/${scope}`);
+
+    return Config.parse(res.data);
+}
+
 export const updateConfig = async (scope: string, config: object) => {
     await axios.patch(`/api/config/configs/${scope}`, config);
 }
