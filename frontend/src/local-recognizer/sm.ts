@@ -68,7 +68,7 @@ export const localRecognizerStateMachine = createMachine<Context>(
             eventBus: busConnector([
                 eventNameForProtocolName('in.text-indirect'),
                 eventNameForProtocolName('in.stt.clientside'),
-                'WS_DISCONNECT',
+                'WS_DISCONNECTED',
                 eventNameForMessageType('in.stt.clientside/processed'),
             ]),
             runRecognition: (context: Context): InvokeCallback<any, AnyEventObject> => (callback) => {
@@ -90,6 +90,7 @@ export const localRecognizerStateMachine = createMachine<Context>(
                 })();
 
                 return async () => {
+                    console.log('Останавливаю распознаватель');
                     let cb;
                     try {
                         cb = await p;

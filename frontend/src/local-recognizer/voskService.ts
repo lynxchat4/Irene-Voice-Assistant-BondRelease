@@ -77,6 +77,9 @@ export const run = async ({
 
     return async () => {
         await audioContext.close();
+        for (const track of mediaStream.getTracks()) {
+            track.stop();
+        }
         model.terminate();
     };
 };
