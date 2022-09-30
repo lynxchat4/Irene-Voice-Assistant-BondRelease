@@ -9,17 +9,25 @@ from irene_plugin_web_face.abc import Connection, ProtocolHandler
 from irene_plugin_web_face.protocol import MT_IN_CLIENT_SIDE_STT_PROCESSED, PROTOCOL_IN_CLIENT_SIDE_STT, \
     MT_IN_CLIENT_SIDE_STT_RECOGNIZED
 
+name = 'plugin_in_stt_clientside'
+version = '0.1.0'
+
 
 class _ClientSTTMessage(PlainTextMessage):
+    __slots__ = ('_connection', '_processed')
+
     def __init__(self, text: str, outputs: OutputChannelPool, connection: Connection):
         super().__init__(text, outputs)
         self._connection = connection
+        self._processed = False
 
     def notify_processed(self, text: str):
-        self._connection.send_message(
-            MT_IN_CLIENT_SIDE_STT_PROCESSED,
-            dict(text=text),
-        )
+        if not self._processed:
+            self._processed = True
+            self._connection.send_message(
+                MT_IN_CLIENT_SIDE_STT_PROCESSED,
+                dict(text=text),
+            )
 
 
 class _InterceptionContext(BaseContextWrapper):
@@ -46,7 +54,7 @@ def intercept_processed_stt_messages_on_root(
 
 
 @operation('construct_context')
-@after('construct_context')
+@after('construct_default')
 def intercept_processed_stt_messages_everywhere(
         nxt: Callable,
         prev: VAContext,

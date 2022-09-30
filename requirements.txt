@@ -10,7 +10,7 @@ numpy
 audioplayer~=0.6
 python-dateutil~=2.6.0
 pyyaml~=6.0
-lingua-franca=0.4.3
+lingua-franca~=0.4.3
 
 uvicorn~=0.18.3
 uvicorn[standard]~=0.18.3
