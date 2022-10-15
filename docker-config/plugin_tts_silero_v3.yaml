@@ -1,0 +1,5 @@
+model_origin_url: https://models.silero.ai/models/tts/ru/v3_1_ru.pt
+model_search_paths:
+  - '/home/python/silero-models/{file_name}'
+  - '{irene_home}/silero_v3/models/{file_name}'
+model_storage_path: '{irene_home}/silero_v3/models/{file_name}'

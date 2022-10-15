@@ -1,0 +1,9 @@
+venv
+**/node_modules
+.git
+.mypy_cache
+_orig
+doc
+htmlcov
+**/dist
+irene_plugin_web_face_frontend/frontend-dist

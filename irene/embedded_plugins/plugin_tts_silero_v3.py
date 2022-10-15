@@ -100,6 +100,8 @@ def _load_model(file: str) -> Any:
 
         _logger.info("Разогрев закончен.")
 
+    return model
+
 
 def _make_tts() -> FileWritingTTS:
     model = _load_model(_download_model_file())
