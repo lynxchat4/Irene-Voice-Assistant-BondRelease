@@ -2,7 +2,7 @@ import json
 from argparse import ArgumentParser
 from collections import Collection
 from logging import getLogger
-from os import environ, listdir
+from os import listdir
 from os.path import isdir, isfile, join, basename
 from pathlib import Path
 from shutil import copyfile
@@ -11,7 +11,7 @@ from typing import Any, Iterable, Optional
 
 import yaml
 
-from irene.plugin_loader.file_match import match_files
+from irene.plugin_loader.file_patterns import match_files, first_substitution, substitute_pattern
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -80,15 +80,15 @@ class ConfigPlugin(MagicPlugin):
             help="Папка, в которой будут храниться файлы конфигурации",
             dest='config_dir',
             metavar='<путь к папке>',
-            type=Path,
-            default=environ.get('IRENE_CONFIG_DIR', Path.home().joinpath('irene', 'config')),
+            type=str,
+            default='{irene_home}/config',
         )
         ap.add_argument(
             '-d', '--default-config',
             help="Дополнительные папки, в которых находятся файлы конфигурации по-умолчанию",
             dest='default_config_paths',
             metavar='<путь к папке>',
-            type=Path,
+            type=str,
             default=[],
             action='append',
         )
@@ -151,8 +151,8 @@ class ConfigPlugin(MagicPlugin):
             copyfile(join(template_path, fn), dst_path)
 
     def receive_cli_arguments(self, args: Any, *_args, **_kwargs):
-        self._config_dir = args.config_dir
-        self._defaults_dirs = args.default_config_paths
+        self._config_dir = Path(first_substitution(args.config_dir))
+        self._defaults_dirs = [Path(it) for pattern in args.default_config_paths for it in substitute_pattern(pattern)]
 
         if len(self._template_paths) > 0:
             if args.list_config_templates:

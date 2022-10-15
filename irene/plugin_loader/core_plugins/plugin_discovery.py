@@ -7,7 +7,7 @@ from types import ModuleType
 from typing import Optional
 
 from irene.plugin_loader.abc import PluginManager, Plugin, OperationStep
-from irene.plugin_loader.file_match import match_files
+from irene.plugin_loader.file_patterns import match_files
 from irene.plugin_loader.magic_plugin import MagicPlugin, after, step_name, operation, MagicModulePlugin
 from irene.plugin_loader.run_operation import call_until_first_result, call_all
 

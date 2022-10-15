@@ -16,3 +16,6 @@ uvicorn~=0.18.3
 uvicorn[standard]~=0.18.3
 fastapi~=0.81.0
 starlette~=0.19.1
+websockets~=10.3
+
+torch~=1.12.1

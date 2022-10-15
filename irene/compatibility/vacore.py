@@ -2,6 +2,7 @@ from os.path import isfile, join, dirname
 from typing import Any, Optional
 
 from irene import VAApiExt
+from irene.utils.all_num_to_text import all_num_to_text
 
 __all__ = ('VACore',)
 
@@ -16,6 +17,8 @@ class VACore:
         self.isOnline = core_config.get('isOnline', False)
 
         self.va: Optional[VAApiExt] = None
+
+        self.all_num_to_text = all_num_to_text
 
     def save_plugin_options(self, _modname, options):
         self.config = options

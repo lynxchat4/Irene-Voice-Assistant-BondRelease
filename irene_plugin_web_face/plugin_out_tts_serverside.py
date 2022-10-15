@@ -18,7 +18,7 @@ version = '0.1.0'
 
 config = {
     'tts': {
-        'type': 'pyttsx',
+        'type': 'silero_v3',
     },
 }
 

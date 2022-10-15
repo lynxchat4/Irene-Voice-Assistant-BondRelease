@@ -1,5 +1,7 @@
 # Основано на https://github.com/github/gitignore/blob/main/Python.gitignore
 
+*.pt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
