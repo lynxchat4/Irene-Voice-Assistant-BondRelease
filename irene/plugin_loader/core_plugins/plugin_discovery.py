@@ -21,8 +21,9 @@ class PluginDiscoveryPlugin(MagicPlugin):
     config = {
         'pluginPaths': [
             "{irene_path}/embedded_plugins/plugin_*.py",
-            "{user_home}/irene-plugins/plugin_*.py",
             "{python_path}/irene_plugin_*/plugin_*.py",
+            "{irene_home}/plugins/plugin_*.py",
+            "{irene_home}/plugins/*/plugin_*.py",
         ],
         "excludePlugins": []
     }

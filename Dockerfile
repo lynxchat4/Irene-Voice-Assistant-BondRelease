@@ -17,6 +17,8 @@ RUN curl https://models.silero.ai/models/tts/ru/v3_1_ru.pt -o ./c9e311e020562111
 
 FROM python:3.9-slim-bullseye
 
+RUN useradd --create-home python
+USER python:python
 WORKDIR /home/python
 
 COPY ./requirements-docker.txt ./requirements.txt
@@ -31,5 +33,7 @@ COPY --link --from=frontend-builder /home/frontend/dist/ ./irene_plugin_web_face
 COPY --link --from=silero-downloader /home/downloader/models/ ./silero-models/
 
 EXPOSE 8086
+
+ENV IRENE_HOME=/irene
 
 CMD ["python", "-m", "irene", "--default-config", "/home/python/config"]
