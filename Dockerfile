@@ -21,6 +21,12 @@ WORKDIR /home/downloader/models
 
 RUN curl https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip -o ./c611af587fcbdacc16bc7a1c6148916c-vosk-model-small-ru-0.22.zip
 
+FROM python:3.9-slim-bullseye as ssl-generator
+
+WORKDIR /home/generator/ssl
+
+RUN openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -nodes -days 365 -subj "/C=RU/CN=*"
+
 FROM python:3.9-slim-bullseye
 
 RUN useradd --create-home python
@@ -38,6 +44,7 @@ COPY docker-config ./config
 COPY --link --from=frontend-builder /home/frontend/dist/ ./irene_plugin_web_face_frontend/frontend-dist/
 COPY --link --from=silero-downloader /home/downloader/models/ ./silero-models/
 COPY --link --from=vosk-downloader /home/downloader/models/ ./vosk-models/
+COPY --link --chown=python:python --from=ssl-generator /home/generator/ssl/ ./ssl/
 
 EXPOSE 8086
 
