@@ -1,0 +1,5 @@
+model_origin_url: https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip
+model_search_paths:
+  - '/home/python/vosk-models/{file_name}'
+  - '{irene_home}/vosk/models/{file_name}'
+model_storage_path: '{irene_home}/vosk/models/{file_name}'

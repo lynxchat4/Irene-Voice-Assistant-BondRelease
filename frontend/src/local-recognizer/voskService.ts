@@ -1,25 +1,15 @@
 import { createModel, type KaldiRecognizer } from 'vosk-browser';
 import type { ServerMessagePartialResult, ServerMessageResult } from 'vosk-browser/dist/interfaces';
+import type { AnyEventObject, Receiver } from 'xstate';
 
 import worklet from './recognizerWorklet.js?url';
 
-export const run = async ({
-    // TODO: Использовать отдельный плагин для загрузки/хранения моделей вместо хранения в папке со статикой
-    modelUrl = '/vosk/models/vosk-model-small-ru-0.22.zip',
-    sampleRate = 48000,
-    onRecognized,
-    onPartialRecognized,
-}: {
-    modelUrl?: string,
-    sampleRate?: number,
-    onPartialRecognized?: (text: string) => void,
-    onRecognized: (text: string) => void,
-}) => {
+const createMediaStream = ({ sampleRate }: { sampleRate: number }): Promise<MediaStream> => {
     if (!navigator?.mediaDevices?.getUserMedia) {
         throw new Error("Голосовой ввод не поддерживается");
     }
 
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
+    return navigator.mediaDevices.getUserMedia({
         video: false,
         audio: {
             echoCancellation: true,
@@ -28,6 +18,53 @@ export const run = async ({
             sampleRate,
         },
     });
+};
+
+/**
+ * Отключает микрофон в переданном `MediaStream` во время воспроизведения аудио.
+ * 
+ * Предотвращает распознание речи голосового ассистента в качестве пользовательского ввода.
+ * 
+ * Теоретически, параметр `echoCancellation: true`, передаваемый при создании `MediaStream`, должен предотвращать попадание
+ * воспроизводимого звука во входящий звуковой поток.
+ * Однако, на практике этого не наблюдается.
+ */
+const trackPlaybacks = ({ onReceived, mediaStream }: { onReceived: Receiver<AnyEventObject>, mediaStream: MediaStream }) => {
+    let runningPlaybacks = 0;
+
+    onReceived(event => {
+        switch (event.type) {
+            case 'PLAYBACK_STARTED':
+                ++runningPlaybacks;
+                break;
+            case 'PLAYBACK_ENDED':
+                --runningPlaybacks;
+                break;
+        }
+
+        if (runningPlaybacks < 0) {
+            console.debug("Что-то пошло не так: счётчик активных воспроизведений опустился ниже нуля.");
+            runningPlaybacks = 0;
+        }
+
+        mediaStream.getTracks()[0].enabled = (runningPlaybacks === 0);
+    });
+};
+
+export const run = async ({
+    modelUrl = '/api/expose_vosk_model/model.zip',
+    sampleRate = 48000,
+    onRecognized,
+    onPartialRecognized,
+    onReceived = () => {},
+}: {
+    modelUrl?: string,
+    sampleRate?: number,
+    onPartialRecognized?: (text: string) => void,
+    onRecognized: (text: string) => void,
+    onReceived: Receiver<AnyEventObject>,
+}) => {
+    const mediaStream = await createMediaStream({ sampleRate });
 
     const model = await createModel(modelUrl);
     const recognizer: KaldiRecognizer = new model.KaldiRecognizer(
@@ -78,6 +115,8 @@ export const run = async ({
 
     const source = audioContext.createMediaStreamSource(mediaStream);
     source.connect(recognizerProcessor);
+
+    trackPlaybacks({ onReceived, mediaStream });
 
     return async () => {
         await audioContext.close();

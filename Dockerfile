@@ -15,6 +15,12 @@ WORKDIR /home/downloader/models
 
 RUN curl https://models.silero.ai/models/tts/ru/v3_1_ru.pt -o ./c9e311e020562111e5414ff93d47e0a1-v3_1_ru.pt
 
+FROM curlimages/curl:7.85.0 as vosk-downloader
+
+WORKDIR /home/downloader/models
+
+RUN curl https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip -o ./c611af587fcbdacc16bc7a1c6148916c-vosk-model-small-ru-0.22.zip
+
 FROM python:3.9-slim-bullseye
 
 RUN useradd --create-home python
@@ -31,9 +37,11 @@ COPY docker-config ./config
 
 COPY --link --from=frontend-builder /home/frontend/dist/ ./irene_plugin_web_face_frontend/frontend-dist/
 COPY --link --from=silero-downloader /home/downloader/models/ ./silero-models/
+COPY --link --from=vosk-downloader /home/downloader/models/ ./vosk-models/
 
 EXPOSE 8086
 
+VOLUME /irene
 ENV IRENE_HOME=/irene
 
 CMD ["python", "-m", "irene", "--default-config", "/home/python/config"]
