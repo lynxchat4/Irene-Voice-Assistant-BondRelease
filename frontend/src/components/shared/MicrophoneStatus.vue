@@ -9,7 +9,7 @@ const sm = useActor<ActorRef<any, any>>(inject('localRecognizerMachine') as any)
 
 <template>
     <template v-if="sm.state.value.hasTag('error')">
-        <span :title="`Ошибка: ${sm.state.value.context.error}`">‼</span>
+        <span :title="`Ошибка: ${sm.state.value.context.error.message}`">‼</span>
     </template>
     <template v-else-if="sm.state.value.matches('inactive')">
         <span title="Микрофон не включен">⏸</span>

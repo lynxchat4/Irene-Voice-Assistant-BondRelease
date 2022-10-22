@@ -15,6 +15,20 @@ export const run = async ({
     onPartialRecognized?: (text: string) => void,
     onRecognized: (text: string) => void,
 }) => {
+    if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error("Голосовой ввод не поддерживается");
+    }
+
+    const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            channelCount: 1,
+            sampleRate,
+        },
+    });
+
     const model = await createModel(modelUrl);
     const recognizer: KaldiRecognizer = new model.KaldiRecognizer(
         sampleRate,
@@ -43,16 +57,6 @@ export const run = async ({
             onPartialRecognized(text);
         });
     }
-
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: false,
-        audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            channelCount: 1,
-            sampleRate,
-        },
-    });
 
     const channel = new MessageChannel();
     model.registerPort(channel.port1);
