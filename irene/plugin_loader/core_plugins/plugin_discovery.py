@@ -7,6 +7,7 @@ from types import ModuleType
 from typing import Optional
 
 from irene.plugin_loader.abc import PluginManager, Plugin, OperationStep
+from irene.plugin_loader.errors import PluginExcludedException
 from irene.plugin_loader.file_patterns import match_files
 from irene.plugin_loader.magic_plugin import MagicPlugin, after, step_name, operation, MagicModulePlugin
 from irene.plugin_loader.run_operation import call_until_first_result, call_all
@@ -48,7 +49,14 @@ class PluginDiscoveryPlugin(MagicPlugin):
         plugin_discovered_op = list(pm.get_operation_sequence('plugin_discovered'))
 
         for plugin_path in match_files(self.config['pluginPaths']):
-            plugins: Optional[Iterable[Plugin]] = call_until_first_result(plugin_discover_op, pm, plugin_path)
+            try:
+                plugins: Optional[Iterable[Plugin]] = call_until_first_result(plugin_discover_op, pm, plugin_path)
+            except PluginExcludedException:
+                self._logger.info(
+                    "Плагин из файла %s отключён",
+                    plugin_path,
+                )
+                continue
 
             if plugins is None:
                 self._logger.warning(
@@ -77,10 +85,15 @@ class PluginDiscoveryPlugin(MagicPlugin):
         if not path.endswith('.py'):
             return
 
-        module_name = splitext(basename(path))[0]
+        file_basename = basename(path)
+
+        if file_basename in self._excluded:
+            raise PluginExcludedException()
+
+        module_name = splitext(file_basename)[0]
 
         if module_name in self._excluded:
-            return
+            raise PluginExcludedException()
 
         spec = spec_from_file_location(
             module_name,
@@ -102,6 +115,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
     @step_name('discover_explicit_plugins')
     def discover_plugins_in_module(self, pm: PluginManager, module: ModuleType, *_args, **_kwargs):
         found = []
+        excluded = 0
         attrs = getattr(module, '__all__', dir(module))
 
         for attr in attrs:
@@ -113,12 +127,16 @@ class PluginDiscoveryPlugin(MagicPlugin):
                     issubclass(value, Plugin) and \
                     getattr(value, '__module__', module.__name__) == module.__name__:
                 if getattr(value, 'name', None) in self._excluded:
+                    excluded = excluded + 1
                     continue
 
                 found.append(value())
 
         if len(found) > 0:
             return found
+
+        if excluded > 0:
+            raise PluginExcludedException()
 
     @operation('discover_plugins_in_module')
     @step_name('discover_magic_plugin_module')

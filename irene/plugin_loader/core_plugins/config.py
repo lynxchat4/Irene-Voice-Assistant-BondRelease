@@ -49,6 +49,7 @@ class ConfigPlugin(MagicPlugin):
 
         self._configs: dict[str, dict] = {}
         self._config_comments: dict[str, str] = {}
+        self._config_mtimes: dict[str, float] = {}
         self._config_dir: Path = Path('./config')
         self._defaults_dirs: Collection[Path] = []
         self._template_paths = template_paths
@@ -205,6 +206,8 @@ class ConfigPlugin(MagicPlugin):
         if main_file.is_file():
             from_file = self._load_config_file(main_file)
             config = {**config, **from_file}
+
+            self._config_mtimes[scope] = main_file.stat().st_mtime
         else:
             for default_file in self._get_default_config_files(scope):
                 try:
@@ -220,6 +223,11 @@ class ConfigPlugin(MagicPlugin):
 
     def _store_config(self, scope):
         p = self._get_config_file(scope)
+
+        if scope in self._config_mtimes and self._config_mtimes[scope] < p.stat().st_mtime:
+            self._logger.info(f"Похоже, файл конфигурации {p} был изменён. Не буду перезаписывать его.")
+            return
+
         config = self._configs.get(scope, {})
 
         with p.open('w', encoding=self.config.get('fileEncoding', 'utf-8')) as f:
