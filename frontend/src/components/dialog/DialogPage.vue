@@ -6,6 +6,9 @@ import { eventBusKey } from '../eventBus';
 import { useActor } from '@xstate/vue';
 import type { ActorRef } from 'xstate';
 
+import SendIcon from '~icons/material-symbols/send'
+import NoMessagesIcon from '~icons/mdi/message-processing-outline'
+
 const inputValue = ref('');
 
 const eventBus = inject(eventBusKey);
@@ -31,14 +34,16 @@ const historySm = useActor<ActorRef<any, any>>(inject('messageHistoryMachine') a
                 <Message :message="message" />
             </template>
             <div v-if="historySm.state.value.context.messages.length === 0" class="empty-feed">
-                <p>💬</p>
+                <NoMessagesIcon style="font-size: 24px;" />
                 <p>Пока ничего нет...</p>
             </div>
         </div>
         <div class="command-input-wrapper">
             <input class="command-input" v-model="inputValue" @keydown.enter="sendCommand"
                 placeholder="Введи сообщение" />
-            <button @click="sendCommand">&gt;</button>
+            <button @click="sendCommand" class="send-button">
+                <SendIcon style="font-size: 32px" />
+            </button>
         </div>
     </div>
 </template>
@@ -99,5 +104,13 @@ input.command-input:focus {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+}
+
+button.send-button {
+    color: #999;
+}
+
+button.send-button:hover {
+    color: rgb(75, 75, 75);
 }
 </style>

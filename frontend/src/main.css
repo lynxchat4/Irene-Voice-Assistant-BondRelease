@@ -10,4 +10,15 @@ body {
 
     --z-index-header: 100;
     --z-index-overlay: 200;
+
+    --color-icon-button-default: #999;
+    --color-icon-button-hover: #777;
+}
+
+.icon-button, .icon-button:visited {
+    color: var(--color-icon-button-default);
+}
+
+.icon-button:hover:not(:disabled), .icon-button:visited:hover:not(:disabled) {
+    color: var(--color-icon-button-hover);
 }

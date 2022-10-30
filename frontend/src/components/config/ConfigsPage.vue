@@ -5,6 +5,9 @@ import { configMachine } from './sm';
 import ConfigEditPanel from './ConfigEditPanel.vue';
 import { computed } from '@vue/reactivity';
 
+import LoadingIcon from '~icons/line-md/loading-twotone-loop'
+import ErrorIcon from '~icons/material-symbols/error-outline'
+
 const sm = useMachine(configMachine, {
     context: {
         error: null,
@@ -24,9 +27,10 @@ const editingConfig = computed(() => sm.state.value.context.configs?.[sm.state.v
         Для применения некоторых изменений может понадобиться перезапуск сервера.
     </p>
     <div v-if="sm.state.value.matches('loading')" class="loading">
-        Загрузка...
+        <LoadingIcon style="font-size: 64px" />
     </div>
     <div v-else-if="sm.state.value.matches('loadingError')" class="error">
+        <ErrorIcon style="font-size: 64px" />
         <h2>Ошибка при загрузке настроек:</h2>
         <p>{{ sm.state.value.context.error }}</p>
     </div>
@@ -49,17 +53,15 @@ const editingConfig = computed(() => sm.state.value.context.configs?.[sm.state.v
 
 <style scoped>
 .error {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around;
-    align-items: center;
     color: var(--color-error);
 }
 
-.loading {
+.loading, .error {
+    margin-top: 20vh;
     display: flex;
     flex-direction: column;
     justify-content: space-around;
+    text-align: center;
     align-items: center;
 }
 
