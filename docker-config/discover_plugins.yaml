@@ -1,4 +1,7 @@
 # Настройки плагина discover_plugins@1.0.0
+appendPythonPath:
+  - '{irene_home}/plugins'
+  - '{irene_home}/deps'
 excludePlugins:
   - 'plugin_tts_pyttsx'
 pluginPaths:

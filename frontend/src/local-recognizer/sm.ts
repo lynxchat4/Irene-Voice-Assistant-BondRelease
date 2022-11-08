@@ -92,7 +92,7 @@ export const localRecognizerStateMachine = createMachine<Context>(
                 'PLAYBACK_ENDED',
             ]),
             runRecognition: (context: Context): InvokeCallback<AnyEventObject, AnyEventObject> => (callback, onReceived) => {
-                const p: Promise<() => Promise<void>> = (async () => {
+                const p = (async () => {
                     const { run } = await import('@/local-recognizer/voskService');
                     let cb;
 

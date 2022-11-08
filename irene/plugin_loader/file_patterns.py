@@ -139,6 +139,33 @@ def substitute_pattern(
         raise ValueError(f"Неизвестная переменная '{e.args[0]}' в шаблоне пути файла '{pattern}'") from None
 
 
+def substitute_patterns(
+        patterns: Iterable[str],
+        *,
+        override_vars: Optional[dict[str, PathVariableValue]] = None,
+) -> Iterable[str]:
+    """
+    Подставляет переменные в заданный шаблон или несколько шаблонов.
+
+    Args:
+        patterns:
+            Шаблон пути файла или коллекция таких шаблонов
+        override_vars:
+            Дополнительные переменные
+
+    Returns:
+        Iterable всех вариантов подстановки переменных
+
+    Raises:
+        ValueError если один из шаблон ов использует переменную, значение которой не определено
+    """
+    if isinstance(patterns, str):
+        return substitute_pattern(patterns, override_vars=override_vars)
+
+    for pattern in patterns:
+        yield from substitute_pattern(pattern, override_vars=override_vars)
+
+
 def first_substitution(
         pattern: str,
         *,

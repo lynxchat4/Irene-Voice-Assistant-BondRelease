@@ -51,4 +51,4 @@ EXPOSE 8086
 VOLUME /irene
 ENV IRENE_HOME=/irene
 
-CMD ["python", "-m", "irene", "--default-config", "/home/python/config"]
+ENTRYPOINT ["python", "-m", "irene", "--default-config", "/home/python/config"]

@@ -1,3 +1,4 @@
+import sys
 from collections import Iterable
 from importlib.util import spec_from_file_location, module_from_spec
 from inspect import isclass
@@ -8,7 +9,7 @@ from typing import Optional
 
 from irene.plugin_loader.abc import PluginManager, Plugin, OperationStep
 from irene.plugin_loader.errors import PluginExcludedException
-from irene.plugin_loader.file_patterns import match_files
+from irene.plugin_loader.file_patterns import match_files, substitute_patterns
 from irene.plugin_loader.magic_plugin import MagicPlugin, after, step_name, operation, MagicModulePlugin
 from irene.plugin_loader.run_operation import call_until_first_result, call_all
 
@@ -25,6 +26,10 @@ class PluginDiscoveryPlugin(MagicPlugin):
             "{python_path}/irene_plugin_*/plugin_*.py",
             "{irene_home}/plugins/plugin_*.py",
             "{irene_home}/plugins/*/plugin_*.py",
+        ],
+        'appendPythonPath': [
+            "{irene_home}/plugins",
+            "{irene_home}/deps",
         ],
         "excludePlugins": []
     }
@@ -45,6 +50,8 @@ class PluginDiscoveryPlugin(MagicPlugin):
 
     @after('config')
     def bootstrap(self, pm: PluginManager, *_args, **_kwargs):
+        sys.path.extend(substitute_patterns(self.config['appendPythonPath']))
+
         plugin_discover_op = list(pm.get_operation_sequence('discover_plugins_at_path'))
         plugin_discovered_op = list(pm.get_operation_sequence('plugin_discovered'))
 

@@ -23,6 +23,21 @@ docker run -it --publish 8086:8086 -v "$HOME/irene:/irene" alexeybond/irene:late
 Приложение будет хранить свои настройки и другие данные в папке, смонтированной к пути `/irene`
 (в примере выше - `$HOME/irene`).
 
+Дополнительные плагины можно класть в подпапку `plugins` внутри папки смонтированной по пути `/irene`
+(в примере выше это будет `$HOME/irene/plugins`). Дополнительные зависимости для плагинов можно установить следующей
+командой:
+
+```shell
+docker run -it --entrypoint pip -v "$HOME/irene:/irene" alexeybond/irene:latest install -t /irene/deps <имя_зависимости>
+```
+
+Или если для плагина есть список зависимостей в виде файла `requirements.txt`:
+
+```shell
+cat путь/к/requirements.txt | \
+  docker run -i --entrypoint pip -v "$HOME/irene:/irene" alexeybond/irene:latest install -t /irene/deps -r /dev/stdin
+```
+
 ### Из исходников
 
 *Работоспособность с версиями python<3.9 не гарантирована.*
