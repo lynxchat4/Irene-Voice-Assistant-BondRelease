@@ -64,65 +64,104 @@ export const run = async ({
     onRecognized: (text: string) => void,
     onReceived: Receiver<AnyEventObject>,
 }) => {
-    const mediaStream = await createMediaStream({ sampleRate });
+    let terminate: (() => Promise<void> | void) | null = null;
 
-    const model = await createModel(modelUrl);
-    const recognizer: KaldiRecognizer = new model.KaldiRecognizer(
-        sampleRate,
-    );
+    try {
+        const mediaStream = await createMediaStream({ sampleRate });
 
-    recognizer.on("result", (message) => {
-        const msg = message as ServerMessageResult;
-        const text = msg.result.text;
-
-        if (text === '') {
-            return;
+        const terminateStream = () => {
+            for (const track of mediaStream.getTracks()) {
+                track.stop();
+            }
         }
 
-        onRecognized(text);
-    });
+        terminate = terminateStream;
 
-    if (onPartialRecognized) {
-        recognizer.on("partialresult", (message) => {
-            const msg = message as ServerMessagePartialResult;
-            const text = msg.result.partial;
+        const audioContext = new AudioContext({
+            sampleRate
+        });
+
+        const terminateContext = () => audioContext.close();
+
+        terminate = async () => {
+            await terminateContext();
+            terminateStream();
+        }
+
+        const source = audioContext.createMediaStreamSource(mediaStream);
+
+        const model = await createModel(modelUrl);
+
+        terminate = async () => {
+            await terminateContext();
+            terminateStream();
+            model.terminate();
+        };
+
+        const recognizer: KaldiRecognizer = new model.KaldiRecognizer(
+            sampleRate,
+        );
+
+        recognizer.on("result", (message) => {
+            const msg = message as ServerMessageResult;
+            const text = msg.result.text;
 
             if (text === '') {
                 return;
             }
 
-            onPartialRecognized(text);
+            onRecognized(text);
         });
-    }
 
-    const channel = new MessageChannel();
-    model.registerPort(channel.port1);
+        if (onPartialRecognized) {
+            recognizer.on("partialresult", (message) => {
+                const msg = message as ServerMessagePartialResult;
+                const text = msg.result.partial;
 
-    const audioContext = new AudioContext({
-        sampleRate
-    });
-    await audioContext.audioWorklet.addModule(worklet);
-    const recognizerProcessor = new AudioWorkletNode(
-        audioContext,
-        'recognizer-processor',
-        { channelCount: 1, numberOfInputs: 1, numberOfOutputs: 1 }
-    );
-    recognizerProcessor.port.postMessage(
-        { action: 'init', recognizerId: recognizer.id },
-        [channel.port2]
-    );
-    recognizerProcessor.connect(audioContext.destination);
+                if (text === '') {
+                    return;
+                }
 
-    const source = audioContext.createMediaStreamSource(mediaStream);
-    source.connect(recognizerProcessor);
-
-    trackPlaybacks({ onReceived, mediaStream });
-
-    return async () => {
-        await audioContext.close();
-        for (const track of mediaStream.getTracks()) {
-            track.stop();
+                onPartialRecognized(text);
+            });
         }
-        model.terminate();
-    };
+
+        const channel = new MessageChannel();
+        model.registerPort(channel.port1);
+
+        await audioContext.audioWorklet.addModule(worklet);
+        const recognizerProcessor = new AudioWorkletNode(
+            audioContext,
+            'recognizer-processor',
+            { channelCount: 1, numberOfInputs: 1, numberOfOutputs: 1 }
+        );
+        recognizerProcessor.port.postMessage(
+            { action: 'init', recognizerId: recognizer.id },
+            [channel.port2]
+        );
+        recognizerProcessor.connect(audioContext.destination);
+
+        source.connect(recognizerProcessor);
+
+        trackPlaybacks({ onReceived, mediaStream });
+
+        return terminate;
+    } catch (e) {
+        try {
+            await terminate?.();
+        } catch (ee) {
+            console.error(ee);
+        }
+
+        if (
+            e instanceof Error &&
+            /AudioContext.createMediaStreamSource: Connecting AudioNodes from AudioContexts with different sample-rate is currently not supported\./.test(e.message) &&
+            /Firefox/g.test(navigator.userAgent)
+        ) {
+            // Firefox иногда настолько пытается защитить приватность пользователя, что скрывает битрейт микрофона даже от самого себя
+            throw new Error('Не удалось запустить распознавание голоса. Попробуйте отключить флаг privacy.resistFingerprinting в настройках (about:config)');
+        }
+
+        throw e;
+    }
 };

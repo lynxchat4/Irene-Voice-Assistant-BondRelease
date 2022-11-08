@@ -20,8 +20,8 @@ export const localRecognizerStateMachine = createMachine<Context>(
         states: {
             inactive: {
                 on: {
-                    [eventNameForProtocolName('in.text-indirect')]: { target: 'active.indirect' },
-                    [eventNameForProtocolName('in.stt.clientside')]: { target: 'active.sttClientSide' },
+                    [eventNameForProtocolName('in.text-indirect')]: { target: 'active.startingIndirect' },
+                    [eventNameForProtocolName('in.stt.clientside')]: { target: 'active.startingSttClientside' },
                 },
             },
             active: {
@@ -39,6 +39,21 @@ export const localRecognizerStateMachine = createMachine<Context>(
                     PLAYBACK_ENDED: { actions: ['forwardToRecognizer'] },
                 },
                 states: {
+                    startingIndirect: {
+                        tags: ['starting'],
+                        on: {
+                            READY: { target: 'indirect' },
+                            [eventNameForProtocolName('in.stt.clientside')]: {
+                                target: 'startingSttClientside'
+                            },
+                        },
+                    },
+                    startingSttClientside: {
+                        tags: ['starting'],
+                        on: {
+                            READY: { target: 'sttClientSide' },
+                        },
+                    },
                     indirect: {
                         on: {
                             RECOGNIZED: {
@@ -87,6 +102,8 @@ export const localRecognizerStateMachine = createMachine<Context>(
                             onRecognized: text => callback({ type: 'RECOGNIZED', data: text }),
                             onReceived,
                         });
+
+                        callback({ type: 'READY' });
                     } catch (e) {
                         callback({ type: 'ERROR', data: e });
                         throw e;

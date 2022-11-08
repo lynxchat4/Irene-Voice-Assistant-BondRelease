@@ -5,6 +5,7 @@ import type { ActorRef } from 'xstate';
 
 import MicIcon from '~icons/material-symbols/mic-rounded'
 import MicOffIcon from '~icons/material-symbols/mic-off-rounded'
+import LoadingIcon from '~icons/line-md/loading-twotone-loop'
 
 const sm = useActor<ActorRef<any, any>>(inject('localRecognizerMachine') as any);
 
@@ -22,7 +23,11 @@ const sm = useActor<ActorRef<any, any>>(inject('localRecognizerMachine') as any)
         </span>
     </template>
     <template v-else-if="sm.state.value.matches('active')">
-        <span title="Микрофон включен">
+        <span v-if="sm.state.value.hasTag('starting')" title="Голосовой ввод запускается">
+            <MicIcon />
+            <LoadingIcon class="loading-icon" />
+        </span>
+        <span v-else title="Микрофон включен">
             <MicIcon />
         </span>
     </template>
@@ -32,5 +37,9 @@ const sm = useActor<ActorRef<any, any>>(inject('localRecognizerMachine') as any)
 span {
     cursor: default;
     display: flex;
+}
+
+span>.loading-icon {
+    position: absolute;
 }
 </style>
