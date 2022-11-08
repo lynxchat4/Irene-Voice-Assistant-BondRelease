@@ -115,10 +115,11 @@ class PluginTestCase(DialogTestCase):
         elif isinstance(self.plugin, str):
             self.configs['discover_plugins'] = {
                 'pluginPaths': [
-                    join('{irene_path}', self.plugin),
+                    join(dirname(__file__), '..', self.plugin),
                     join('{python_path}', self.plugin, 'plugin_*.py'),
                     join(test_case_dir, self.plugin),
-                ]
+                ],
+                'appendPythonPath': [],
             }
             plugins.append(PluginDiscoveryPlugin())
         else:
