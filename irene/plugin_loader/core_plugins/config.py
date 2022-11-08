@@ -357,5 +357,5 @@ class ConfigPlugin(MagicPlugin):
                 current[k] = v
 
             for step in pm.get_operation_sequence('receive_config'):
-                if step.plugin.name is scope:
+                if step.plugin.name == scope:
                     step.step(current)

@@ -67,6 +67,7 @@ class _OriginalPlugin(MagicPlugin):
 
     def _receive_config(self, config, *_args, **_kwargs):
         self._manifest['options'] = config
+        self._core.config = config
 
         try:
             start_with_options = self._module.start_with_options

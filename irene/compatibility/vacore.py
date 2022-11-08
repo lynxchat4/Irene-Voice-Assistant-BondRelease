@@ -7,6 +7,11 @@ from irene.utils.all_num_to_text import all_num_to_text
 __all__ = ('VACore',)
 
 
+class _UnsupportedConfigAccessError(NotImplementedError):
+    def __init__(self):
+        super().__init__("Доступ к конфигурации других плагинов не поддерживается.")
+
+
 class VACore:
     def __init__(self, modname, core_config):
         self._modname = modname
@@ -20,14 +25,18 @@ class VACore:
 
         self.all_num_to_text = all_num_to_text
 
-    def save_plugin_options(self, _modname, options):
-        self.config = options
+    def save_plugin_options(self, modname, options):
+        if modname == self._modname:
+            self.config = options
+            return
+
+        raise _UnsupportedConfigAccessError()
 
     def plugin_options(self, modname: str) -> dict[str, Any]:
         if modname == self._modname:
             return self.config
 
-        raise NotImplementedError("Доступ к конфигурации других плагинов не поддерживается.")
+        raise _UnsupportedConfigAccessError()
 
     def say(self, text: str):
         self.va.say(text)
