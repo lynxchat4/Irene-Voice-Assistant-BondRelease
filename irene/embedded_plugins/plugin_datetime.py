@@ -9,7 +9,7 @@ version = '2.0'
 config = {
     "sayNoon": False,
     "skipUnits": False,
-    "unitsSeparator": ", ",
+    "unitsSeparator": " ",
     "skipMinutesWhenZero": True,
 }
 
@@ -58,23 +58,23 @@ def _play_time(va: VAApiExt, _phrase: str):
         units_hours = ((u'час', u'часа', u'часов'), 'm')
 
     now = datetime.now()
-    hours = int(now.strftime("%H"))
-    minutes = int(now.strftime("%M"))
 
     if config["sayNoon"]:
-        if hours == 0 and minutes == 0:
+        if now.hour == 0 and now.minute == 0:
             va.say("Сейчас ровно полночь")
             return
-        elif hours == 12 and minutes == 0:
+        elif now.hour == 12 and now.minute == 0:
             va.say("Сейчас ровно полдень")
             return
 
-    txt = num2text(hours, units_hours)
-    if minutes > 0 or config["skipMinutesWhenZero"] is not True:
+    txt = num2text(now.hour, units_hours)
+    if now.minute > 0 or config["skipMinutesWhenZero"] is not True:
         txt = "Сейчас " + txt
         if not config["skipUnits"]:
             txt += config["unitsSeparator"]
-        txt += num2text(minutes, units_minutes)
+        else:
+            txt += " "
+        txt += num2text(now.minute, units_minutes)
     else:
         txt = "Сейчас ровно " + txt
 

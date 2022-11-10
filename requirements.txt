@@ -19,3 +19,5 @@ starlette~=0.19.1
 websockets~=10.3
 
 torch~=1.12.1
+
+time_machine~=2.8.2

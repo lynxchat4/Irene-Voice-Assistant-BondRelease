@@ -34,6 +34,12 @@ class NumToTextTest(unittest.TestCase):
             "минус одна штука"
         )
 
+    def test_empty_words(self):
+        self.assertEqual(
+            num2text(1, main_units=(('', '', ''), 'f')),
+            "одна"
+        )
+
 
 class DecimalToTextTest(unittest.TestCase):
     def test(self):
