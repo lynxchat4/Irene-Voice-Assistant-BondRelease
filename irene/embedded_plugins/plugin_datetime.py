@@ -4,7 +4,7 @@ from irene import VAApiExt
 from irene.utils.num_to_text_ru import num2text
 
 name = 'datetime'
-version = '2.0'
+version = '2.0.1'
 
 config = {
     "sayNoon": False,
