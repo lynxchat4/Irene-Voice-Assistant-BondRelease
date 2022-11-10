@@ -70,10 +70,7 @@ def _play_time(va: VAApiExt, _phrase: str):
     txt = num2text(now.hour, units_hours)
     if now.minute > 0 or config["skipMinutesWhenZero"] is not True:
         txt = "Сейчас " + txt
-        if not config["skipUnits"]:
-            txt += config["unitsSeparator"]
-        else:
-            txt += " "
+        txt += config["unitsSeparator"]
         txt += num2text(now.minute, units_minutes)
     else:
         txt = "Сейчас ровно " + txt
