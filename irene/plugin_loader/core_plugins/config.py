@@ -12,6 +12,7 @@ from typing import Any, Iterable, Optional
 import yaml
 
 from irene.plugin_loader.file_patterns import match_files, first_substitution, substitute_pattern
+from irene.plugin_loader.utils.snapshot_hash import snapshot_hash
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -25,12 +26,138 @@ _CONFIG_EXTENSIONS = ('.yaml', '.yml', '.json')
 
 _TEMPLATE_DESCRIPTION_FILE = 'README.txt'
 
+_logger = getLogger('config')
+
+
+class ConfigurationScope:
+    """
+    Объект, управляющий состоянием конфигурации отдельного плагина.
+    """
+
+    def __init__(
+            self,
+            main_file_path: Path,
+            initial_value: dict[str, Any],
+            plugin: Plugin,
+            comment: str,
+    ):
+        self._main_file_path = main_file_path
+        self._value = initial_value
+        self._plugin = plugin
+        self._comment = comment
+        self._stored_hash: Optional[int] = None
+        self._stored_mtime: Optional[float] = None
+        self._notified_hash: Optional[int] = None
+
+    def calc_current_hash(self) -> int:
+        return snapshot_hash(self._value)
+
+    def get_current_value(self) -> dict[str, Any]:
+        return self._value
+
+    def get_comment(self) -> str:
+        return self._comment
+
+    def notify_plugin(self):
+        """
+        Сообщает плагину если конфигурация была изменена.
+        """
+        if self._notified_hash == self.calc_current_hash():
+            return
+
+        for step in self._plugin.get_operation_steps('receive_config'):
+            step.step(self._value)
+
+        # Плагин может изменить конфигурацию в операции receive_config, пересчитываем хеш заново и запоминаем
+        self._notified_hash = self.calc_current_hash()
+
+    def was_modified_in_memory(self) -> bool:
+        """
+        Проверяет, отличается ли конфигурация, хранящаяся в памяти от той, которая была в последний раз прочитана из
+        основного файла конфигурации.
+
+        Если конфигурация ранее не была прочитана из основного файла конфигурации, то возвращается True.
+        """
+        return self._stored_hash != self.calc_current_hash()
+
+    def exists_on_disk(self):
+        return self._main_file_path.exists()
+
+    def was_modified_on_disk(self) -> bool:
+        """
+        Проверяет, был ли файл на диске изменён с последней загрузки.
+
+        "Изменение" включает удаление существующего файла или создание не существовавшего файла.
+        """
+        if self._main_file_path.exists() != (self._stored_mtime is not None):
+            return True
+
+        if self._stored_mtime is not None:
+            return self._main_file_path.stat().st_mtime > self._stored_mtime
+
+        return False
+
+    def apply_patch(self, patch: dict[str, Any]):
+        for k, v in patch.items():
+            self._value[k] = v
+
+    def load_file(self, file_path: Path, encoding: str) -> dict[str, Any]:
+        """
+        Загружает значения из заданного файла в текущее значение конфигурации.
+
+        Args:
+            file_path:
+                Путь к файлу конфигурации
+            encoding:
+                Кодировка файла
+        Returns:
+            Словарь со значениями, прочитанными из файла.
+        """
+        try:
+            with file_path.open('r', encoding=encoding) as f:
+                data = yaml.load(f, Loader)
+        except Exception as e:
+            _logger.exception(f"Ошибка при чтении файла конфигурации {file_path}", exc_info=e)
+            raise Exception(f"Не удалось прочитать файл конфигурации {file_path}") from None
+
+        if not isinstance(data, dict):
+            raise Exception(f"Файл конфигурации {file_path} содержит что-то неожиданное вместо одного объекта")
+
+        self.apply_patch(data)
+
+        return data
+
+    def load_main_file(self, encoding: str):
+        """
+        Загружает главный файл конфигурации из файловой системы.
+        """
+        if self._main_file_path.exists():
+            loaded_data = self.load_file(self._main_file_path, encoding)
+
+            self._stored_hash = snapshot_hash(loaded_data)
+            self._stored_mtime = self._main_file_path.stat().st_mtime
+        else:
+            self._stored_hash = None
+            self._stored_mtime = None
+
+    def store_main_file(self, encoding: str, yaml_options: dict[str, Any]):
+        """
+        Сохраняет текущее значение конфигурации в главный файл конфигурации.
+        """
+        with self._main_file_path.open('w', encoding=encoding) as f:
+            if self._main_file_path.suffix == '.json':
+                json.dump(self._value, f)
+            else:
+                for line in self._comment.strip().split('\n'):
+                    f.write('# ' + line + '\n')
+                yaml.dump(self._value, f, Dumper, **yaml_options)
+
+        self._stored_mtime = self._main_file_path.stat().st_mtime
+
 
 class ConfigPlugin(MagicPlugin):
     name = 'config'
     version = '1.0.0'
-
-    _logger = getLogger('config')
 
     config: dict[str, Any] = {
         'yamlDumpOptions': {
@@ -39,6 +166,11 @@ class ConfigPlugin(MagicPlugin):
             'allow_unicode': True,
         },
         'fileEncoding': 'utf-8',
+        'storeOnRESTUpdate': True,
+        'storeOnShutdown': True,
+        # 'watchFileChanges': True, # TODO: Implement file watching
+        # 'watchMemoryChanges': True,
+        # 'watchIntervalSeconds': 30,
     }
     config_comment = u"""
     Настройки загрузки/сохранения конфигурации.
@@ -47,9 +179,7 @@ class ConfigPlugin(MagicPlugin):
     def __init__(self, *, template_paths: Collection[str] = ()):
         super().__init__()
 
-        self._configs: dict[str, dict] = {}
-        self._config_comments: dict[str, str] = {}
-        self._config_mtimes: dict[str, float] = {}
+        self._scopes: dict[str, ConfigurationScope] = {}
         self._config_dir: Path = Path('./config')
         self._defaults_dirs: Collection[Path] = []
         self._template_paths = template_paths
@@ -184,98 +314,93 @@ class ConfigPlugin(MagicPlugin):
 
         return p
 
-    def _load_config_file(self, p: Path):
-        try:
-            with p.open(
-                    'r',
-                    encoding=self.config.get('fileEncoding', 'utf-8'),
-            ) as f:
-                return yaml.load(f, Loader)
-        except Exception as e:
-            self._logger.exception(f"Ошибка при чтении файла конфигурации {p}", exc_info=e)
-            raise Exception(f"Не удалось прочитать файл конфигурации {p}") from None
+    def _get_file_encoding(self) -> str:
+        return self.config.get('fileEncoding', 'utf-8')
 
-    def _get_config(self, scope: str, default: dict) -> dict:
-        if scope in self._configs:
-            return self._configs[scope]
-
-        main_file = self._get_config_file(scope)
-
-        config = default
-
-        if main_file.is_file():
-            from_file = self._load_config_file(main_file)
-            config = {**config, **from_file}
-
-            self._config_mtimes[scope] = main_file.stat().st_mtime
+    def _init_config_scope(self, config_step: OperationStep):
+        if isinstance(config_step.step, dict):
+            config_value = config_step.step
         else:
-            for default_file in self._get_default_config_files(scope):
-                try:
-                    overrides = self._load_config_file(default_file)
-                except Exception:
-                    pass
-                else:
-                    config = {**config, **overrides}
-
-        self._configs[scope] = config
-
-        return config
-
-    def _store_config(self, scope):
-        p = self._get_config_file(scope)
-
-        if scope in self._config_mtimes and self._config_mtimes[scope] < p.stat().st_mtime:
-            self._logger.info(f"Похоже, файл конфигурации {p} был изменён. Не буду перезаписывать его.")
+            _logger.warning(
+                "Плагин %s имеет неподдерживаемый тип конфигурации",
+                config_step.plugin
+            )
             return
 
-        config = self._configs.get(scope, {})
+        comment = dedent(getattr(
+            config_step.plugin,
+            'config_comment',
+            f'Настройки плагина {config_step.plugin}'
+        ))
 
-        with p.open('w', encoding=self.config.get('fileEncoding', 'utf-8')) as f:
-            if p.suffix == '.json':
-                return json.dump(config, f)
-            else:
-                if scope in self._config_comments:
-                    for line in self._config_comments[scope].strip().split('\n'):
-                        f.write('# ' + line + '\n')
+        main_file_path = self._get_config_file(config_step.plugin.name)
 
-                return yaml.dump(config, f, Dumper, **self.config['yamlDumpOptions'])
+        scope = ConfigurationScope(
+            main_file_path,
+            config_value,
+            config_step.plugin,
+            comment,
+        )
 
-    def _process_plugin_config_steps(self, steps: Iterable[OperationStep]):
-        for step in steps:
-            if not isinstance(step.step, dict):
-                self._logger.warning(
-                    "Плагин %s имеет неподдерживаемый тип конфигурации",
-                    step.plugin
-                )
-                continue
+        for defaults_path in self._get_default_config_files(config_step.plugin.name):
+            if defaults_path.exists():
+                scope.load_file(defaults_path, self._get_file_encoding())
 
-            cfg = self._get_config(step.plugin.name, step.step)
+        if scope.exists_on_disk():
+            scope.load_main_file(self._get_file_encoding())
 
-            if hasattr(step.plugin, 'config'):
-                setattr(step.plugin, 'config', cfg)
+        scope.notify_plugin()
 
-            self._config_comments[step.plugin.name] = dedent(getattr(
-                step.plugin,
-                'config_comment',
-                f'Настройки плагина {step.plugin}'
-            ))
+        if scope.was_modified_in_memory():
+            scope.store_main_file(
+                self._get_file_encoding(),
+                yaml_options=self.config['yamlDumpOptions']
+            )
+
+        self._scopes[config_step.plugin.name] = scope
+
+    def _store_config(self, scope_name):
+        try:
+            scope = self._scopes[scope_name]
+        except KeyError:
+            _logger.warning(
+                "0.o Попытка сохранить несуществующую конфигурацию %s",
+                scope_name,
+            )
+            return
+
+        if scope.exists_on_disk() and scope.was_modified_on_disk():
+            _logger.debug(
+                "Похоже, файл конфигурации для %s был изменён на диске. Не буду перезаписывать его.",
+                scope_name,
+            )
+            return
+
+        if not scope.was_modified_in_memory():
+            _logger.debug(
+                "Конфигурация %s не была изменена. Не буду перезаписывать файл.",
+                scope_name,
+            )
+            return
+
+        scope.store_main_file(
+            self.config.get('encoding', 'utf-8'),
+            yaml_options=self.config.get('yamlDumpOptions', {})
+        )
 
     @step_name('config')
     def bootstrap(self, pm: PluginManager, *_args, **_kwargs):
-        self._process_plugin_config_steps(pm.get_operation_sequence('config'))
-
-        for step in pm.get_operation_sequence('receive_config'):
-            step.step(self._get_config(step.plugin.name, {}))
+        for step in pm.get_operation_sequence('config'):
+            self._init_config_scope(step)
 
     def plugin_discovered(self, _pm: PluginManager, plugin: Plugin, *_args, **_kwargs):
-        self._process_plugin_config_steps(plugin.get_operation_steps('config'))
-
-        for step in plugin.get_operation_steps('receive_config'):
-            step.step(self._get_config(step.plugin.name, {}))
+        for step in plugin.get_operation_steps('config'):
+            self._init_config_scope(step)
 
     def terminate(self, *_args, **_kwargs):
-        for scope in self._configs.keys():
-            self._store_config(scope)
+        if self.config['storeOnShutdown']:
+            for scope_name in self._scopes.keys():
+                self._store_config(scope_name)
 
     def register_fastapi_endpoints(self, router, pm: PluginManager, *_args, **_kwargs):
         from fastapi import APIRouter, Body, HTTPException
@@ -304,40 +429,42 @@ class ConfigPlugin(MagicPlugin):
             """
             Возвращает список всех конфигов с их текущим состоянием.
             """
-            return [
-                ConfigModel(
-                    scope=scope,
-                    config=self._configs[scope],
-                    comment=self._config_comments.get(scope, None),
+            return list(
+                sorted(
+                    (ConfigModel(
+                        scope=scope_name,
+                        config=scope.get_current_value(),
+                        comment=scope.get_comment(),
+                    ) for scope_name, scope in self._scopes.items()),
+                    key=lambda conf: conf.scope
                 )
-                for scope in self._configs
-            ]
+            )
 
         @r.get(
-            '/configs/{scope}',
+            '/configs/{scope_name}',
             response_model=ConfigModel,
             name="Получение одного конфига",
         )
-        def get_one_config(scope: str) -> ConfigModel:
+        def get_one_config(scope_name: str) -> ConfigModel:
             """
             Возвращает один конфиг.
             """
             try:
-                cfg = self._configs[scope]
+                scope = self._scopes[scope_name]
             except KeyError:
                 raise HTTPException(404)
 
             return ConfigModel(
-                scope=scope,
-                config=cfg,
-                comment=self._config_comments.get(scope, None),
+                scope=scope_name,
+                config=scope.get_current_value(),
+                comment=scope.get_comment(),
             )
 
         @r.patch(
-            '/configs/{scope}',
+            '/configs/{scope_name}',
             name="Обновление одного конфига",
         )
-        def update_scope_config(scope: str, config: dict[str, Any] = Body()):
+        def update_scope_config(scope_name: str, config: dict[str, Any] = Body()):
             """
             Обновляет один из конфигов.
 
@@ -349,13 +476,12 @@ class ConfigPlugin(MagicPlugin):
             перезапуск приложения.
             """
             try:
-                current = self._configs[scope]
+                scope = self._scopes[scope_name]
             except KeyError:
                 raise HTTPException(404)
 
-            for k, v in config.items():
-                current[k] = v
+            scope.apply_patch(config)
+            scope.notify_plugin()
 
-            for step in pm.get_operation_sequence('receive_config'):
-                if step.plugin.name == scope:
-                    step.step(current)
+            if self.config['storeOnRESTUpdate']:
+                self._store_config(scope_name)
