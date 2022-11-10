@@ -28,14 +28,14 @@ docker run -it --publish 8086:8086 -v "$HOME/irene:/irene" alexeybond/irene:late
 командой:
 
 ```shell
-docker run -it --entrypoint pip -v "$HOME/irene:/irene" alexeybond/irene:latest install -t /irene/deps <имя_зависимости>
+docker run -it --rm --entrypoint pip -v "$HOME/irene:/irene" alexeybond/irene:latest install -t /irene/deps <имя_зависимости>
 ```
 
 Или если для плагина есть список зависимостей в виде файла `requirements.txt`:
 
 ```shell
 cat путь/к/requirements.txt | \
-  docker run -i --entrypoint pip -v "$HOME/irene:/irene" alexeybond/irene:latest install -t /irene/deps -r /dev/stdin
+  docker run -i --rm --entrypoint pip -v "$HOME/irene:/irene" alexeybond/irene:latest install -t /irene/deps -r /dev/stdin
 ```
 
 ### Из исходников
@@ -108,9 +108,8 @@ python3 -m irene --help
 - Silero V3
 
 Дополнительные плагины можно расположить в папке `plugins` папки данных Ирины (упомянутой ранее `IRENE_HOME` или папки
-`/irene` в Docker-контейнере). В случае использования Docker-контейнера, дополнительные зависимости плагинов должны быть
-расположены в той же папке. Совместимость с плагинами, написанными для оригинальной Ирины не является полной. Инструкция
-по написанию новых плагинов доступна в [ДОКУМЕНТ НЕ СОЗДАН].
+`/irene` в Docker-контейнере). Совместимость с плагинами, написанными для оригинальной Ирины не является полной.
+Инструкция по написанию новых плагинов доступна в [ДОКУМЕНТ НЕ СОЗДАН].
 
 ---
 
