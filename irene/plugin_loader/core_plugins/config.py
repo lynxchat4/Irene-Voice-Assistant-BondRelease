@@ -7,6 +7,7 @@ from os.path import isdir, isfile, join, basename
 from pathlib import Path
 from shutil import copyfile
 from textwrap import dedent
+from threading import Event
 from typing import Any, Iterable, Optional
 
 import yaml
@@ -168,12 +169,30 @@ class ConfigPlugin(MagicPlugin):
         'fileEncoding': 'utf-8',
         'storeOnRESTUpdate': True,
         'storeOnShutdown': True,
-        # 'watchFileChanges': True, # TODO: Implement file watching
-        # 'watchMemoryChanges': True,
-        # 'watchIntervalSeconds': 30,
+        'watchFileChanges': True,
+        'watchMemoryChanges': True,
+        'watchIntervalSeconds': 30,
     }
     config_comment = u"""
-    Настройки загрузки/сохранения конфигурации.
+    Настройки загрузки, сохранения и обновления конфигурации.
+
+    Доступны следующие параметры:
+
+    - `yamlDumpOptions` - параметры, передаваемые функции `yaml.dump` см. https://pyyaml.org/wiki/PyYAMLDocumentation
+    - `storeOnRESTUpdate` - если True, то конфигурация автоматически сохраняется в файл при её обновлении через REST API
+    - `storeOnShutdown` - если True, то конфигурация сохраняется при завершении работы.
+      Сохранение при завершении работы срабатывает не всегда.
+    - `watchFileChanges` - если True, то загрузчик конфигурации будет проверять, изменились ли файлы конфигурации на
+      диске и загружать их в случае изменений.
+      Для полноценного применения некоторых настроек может всё ещё понадобиться перезапуск приложения.
+    - `watchMemoryChanges` - если True, то загрузчик конфигурации будет отслеживать изменения конфигурации, хранящейся в
+      памяти и записывать её актуальное состояние в файл.
+    - `watchIntervalSeconds` - интервал времени в секундах, через который загрузчик конфигурации проверяет наличие
+      изменений файлов конфигурации (`watchFileChanges`) и хранимой в памяти конфигурации (`watchMemoryChanges`).
+
+    Если установлены одновременно флаги `watchFileChanges` и `watchMemoryChanges`, то при одновременном (в течение
+    одного интервала `watchIntervalSeconds`) изменении конфигурации и в памяти и в файле на диске приоритет имеют
+    изменения внесённые в памяти и, соответственно, файл конфигурации будет перезаписан.
     """
 
     def __init__(self, *, template_paths: Collection[str] = ()):
@@ -184,6 +203,8 @@ class ConfigPlugin(MagicPlugin):
         self._defaults_dirs: Collection[Path] = []
         self._template_paths = template_paths
         self._template_extracted = False
+        self._watch_termination_request = Event()
+        self._watch_terminated = Event()
 
     def setup_cli_arguments(self, ap: ArgumentParser, *_args, **_kwargs):
         if len(self._template_paths) > 0:
@@ -397,12 +418,53 @@ class ConfigPlugin(MagicPlugin):
         for step in plugin.get_operation_steps('config'):
             self._init_config_scope(step)
 
+    def run(self, *_args, **_kwargs):
+        try:
+            while not self._watch_termination_request.wait(self.config['watchIntervalSeconds']):
+                watch_file_changes, watch_memory_changes = \
+                    self.config['watchFileChanges'], self.config['watchMemoryChanges']
+
+                if (not watch_file_changes) and (not watch_memory_changes):
+                    continue
+
+                for scope_name, scope in self._scopes.items():
+                    if watch_memory_changes and scope.was_modified_in_memory():
+                        _logger.info(
+                            "Конфигурация для %s была изменена, перезаписываю файл",
+                            scope_name,
+                        )
+                        try:
+                            scope.store_main_file(self._get_file_encoding(), self.config['yamlDumpOptions'])
+                        except Exception:
+                            _logger.exception("Ошибка при сохранении конфигурации для %s", scope_name)
+                    elif watch_file_changes and scope.was_modified_on_disk():
+                        _logger.info(
+                            "Файл конфигурации для %s был изменён, загружаю его",
+                            scope_name,
+                        )
+                        try:
+                            scope.load_main_file(self._get_file_encoding())
+                        except Exception:
+                            _logger.exception("Ошибка при загрузке конфигурации для %s", scope_name)
+
+                        try:
+                            scope.notify_plugin()
+                        except Exception:
+                            _logger.exception("Ошибка при обработке изменений в конфигурации %s", scope_name)
+        finally:
+            self._watch_terminated.set()
+
     def terminate(self, *_args, **_kwargs):
+        self._watch_termination_request.set()
+        self._watch_terminated.wait()
+        self._watch_terminated.clear()
+        self._watch_termination_request.clear()
+
         if self.config['storeOnShutdown']:
             for scope_name in self._scopes.keys():
                 self._store_config(scope_name)
 
-    def register_fastapi_endpoints(self, router, pm: PluginManager, *_args, **_kwargs):
+    def register_fastapi_endpoints(self, router, *_args, **_kwargs):
         from fastapi import APIRouter, Body, HTTPException
         from pydantic import BaseModel, Field
 
