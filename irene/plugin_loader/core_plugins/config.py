@@ -154,6 +154,7 @@ class ConfigurationScope:
                 yaml.dump(self._value, f, Dumper, **yaml_options)
 
         self._stored_mtime = self._main_file_path.stat().st_mtime
+        self._stored_hash = self.calc_current_hash()
 
 
 class ConfigPlugin(MagicPlugin):
