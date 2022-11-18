@@ -1,15 +1,17 @@
 from logging import getLogger
-from typing import Optional, Any
+from typing import Optional, Any, Callable, Iterable
 
 import telebot.apihelper as apihelper
 from telebot import TeleBot
 from telebot.types import Message
 
-from irene.brain.abc import Brain, OutputChannel
+from irene.brain.abc import Brain, OutputChannel, VAContext, VAApi, InboundMessage
+from irene.brain.contexts import BaseContextWrapper
 from irene.brain.output_pool import OutputPoolImpl
 from irene.plugin_loader.abc import PluginManager
-from irene.plugin_loader.magic_plugin import MagicPlugin
+from irene.plugin_loader.magic_plugin import MagicPlugin, operation, before, after
 from irene.plugin_loader.run_operation import call_all_as_wrappers, call_all
+from irene_plugin_telegram_face.inbound_messages import TelegramMessage
 
 apihelper.ENABLE_MIDDLEWARE = True
 
@@ -33,6 +35,19 @@ class TelegramFacePlugin(MagicPlugin):
 
         self._bot: Optional[TeleBot] = None
         self._pm: Optional[PluginManager] = None
+
+    def _get_authorized_chats(self) -> Iterable[int]:
+        """
+        Возвращает ``Iterable``, всегда содержащий актуальный список идентификаторов авторизованных чатов.
+        """
+        me = self
+
+        class AuthorizedChats:
+            def __iter__(self):
+                chats: list[int] = me.config['authorizedChats']
+                return iter(chats)
+
+        return AuthorizedChats()
 
     def telegram_add_bot_handlers(self, bot: TeleBot, *_args, **_kwargs):
         @bot.middleware_handler(update_types=['message'])
@@ -74,6 +89,31 @@ class TelegramFacePlugin(MagicPlugin):
                     f"Получено сообщение из неавторизованного чата {message.chat.id} ({message.chat.username})"
                 )
 
+    @operation('create_root_context')
+    @before('add_trigger_phrase')
+    @after('load_commands')
+    def skip_trigger_phrase(
+            self,
+            nxt: Callable,
+            prev: Optional[VAContext],
+            *args, **kwargs,
+    ):
+        if prev is None:
+            raise ValueError()
+
+        class TriggerPhraseSkipContext(BaseContextWrapper):
+            def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
+                original_message = message.get_original()
+
+                if isinstance(original_message, TelegramMessage) and original_message.is_direct():
+                    return prev.handle_command(va, message)
+
+                return super().handle_command(va, message)
+
+        return TriggerPhraseSkipContext(
+            nxt(prev, *args, **kwargs)
+        )
+
     def run(self, pm: PluginManager, *_args, **_kwargs):
         token: Optional[str] = self.config['token']
 
@@ -97,8 +137,9 @@ class TelegramFacePlugin(MagicPlugin):
         broadcast_channels: list[OutputChannel] = call_all_as_wrappers(
             pm.get_operation_sequence('telegram_create_broadcast_channels'),
             [],
-            bot, pm,
-            authorized_chats=self.config['authorizedChats']
+            bot,
+            self._get_authorized_chats(),
+            pm,
         )
 
         with brain.send_messages(OutputPoolImpl(broadcast_channels)) as send_message:
