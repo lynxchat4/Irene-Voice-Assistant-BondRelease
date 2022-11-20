@@ -6,7 +6,7 @@ from telebot.types import Message
 from irene.brain.abc import InboundMessage, OutputChannel
 from irene.brain.output_pool import OutputPoolImpl
 from irene.plugin_loader.abc import PluginManager
-from irene.plugin_loader.magic_plugin import MagicPlugin
+from irene.plugin_loader.magic_plugin import MagicPlugin, step_name
 from irene.plugin_loader.run_operation import call_all_as_wrappers
 from irene_plugin_telegram_face.inbound_messages import TelegramTextMessage
 from irene_plugin_telegram_face.outputs import ReplyTextChannel, ChatTextChannel, BroadcastTextChannel
@@ -46,6 +46,7 @@ class TelegramPlaintextIOPlugin(MagicPlugin):
 
         return nxt(channels, bot, authorized_chats, *args, **kwargs)
 
+    @step_name('plaintext')
     def telegram_add_message_reply_channels(
             self,
             nxt,

@@ -12,6 +12,8 @@ python-dateutil~=2.6.0
 pyyaml~=6.0
 lingua-franca~=0.4.3
 
+pyTelegramBotAPI~=4.7.1
+
 uvicorn~=0.18.3
 uvicorn[standard]~=0.18.3
 fastapi~=0.81.0

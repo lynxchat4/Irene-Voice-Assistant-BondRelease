@@ -4,6 +4,7 @@ from telebot import TeleBot
 from telebot.types import Chat, Message
 
 from irene.brain.abc import TextOutputChannel, AudioOutputChannel
+from irene.utils.audio_converter import AudioConverter, ConversionError
 
 
 def args_to_send_message(
@@ -28,11 +29,11 @@ def args_to_send_message(
 
 
 class ChatTextChannel(TextOutputChannel):
-    __slots__ = ('_bot', '_chat')
-
     """
     Канал, отправляющий текстовые сообщения в один чат.
     """
+
+    __slots__ = ('_bot', '_chat')
 
     def __init__(self, bot: TeleBot, chat: Chat):
         self._bot = bot
@@ -46,11 +47,11 @@ class ChatTextChannel(TextOutputChannel):
 
 
 class ReplyTextChannel(ChatTextChannel):
-    __slots__ = ('_message',)
-
     """
     Канал, отправляющий текстовые сообщения в один канал в ответ на заданное сообщение.
     """
+
+    __slots__ = ('_message',)
 
     def __init__(self, bot: TeleBot, message: Message):
         super().__init__(bot, message.chat)
@@ -69,11 +70,11 @@ class ReplyTextChannel(ChatTextChannel):
 
 
 class BroadcastTextChannel(TextOutputChannel):
-    __slots__ = ('_bot', '_chat_ids')
-
     """
     Канал, отправляющий текстовые сообщения во все доступные чаты.
     """
+
+    __slots__ = ('_bot', '_chat_ids')
 
     def __init__(self, bot: TeleBot, chat_ids: Iterable[int]):
         self._bot = bot
@@ -96,16 +97,96 @@ class BroadcastTextChannel(TextOutputChannel):
 
 
 class AudioChannel(AudioOutputChannel):
-    def __init__(self, bot: TeleBot, chat: Chat):
+    """
+    Канал, отправляющий аудио-файлы в чат.
+    """
+
+    __slots__ = ('_bot', '_chat')
+
+    def __init__(
+            self,
+            bot: TeleBot,
+            chat: Chat,
+            converter: Optional[AudioConverter] = None,
+    ):
         self._bot = bot
         self._chat = chat
+        self._converter = converter
+
+    @staticmethod
+    def _args_to_telebot(
+            alt_text: Optional[str] = None,
+            telebot_add_args: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        args = telebot_add_args.copy() if telebot_add_args is not None else {}
+        if alt_text is not None:
+            args['caption'] = alt_text
+
+        return args
 
     def send_file(
             self,
             file_path: str,
-            *,
-            alt_text: Optional[str] = None,
-            telebot_add_args: Optional[dict[str, Any]] = None,
             **kwargs
     ):
-        raise NotImplemented
+        with open(file_path, 'rb') as file:
+            self._bot.send_audio(
+                self._chat.id,
+                file,
+                **self._args_to_telebot(**kwargs),
+            )
+
+
+class VoiceChannel(AudioChannel):
+    """
+    Канал, отправляющий аудио-файл в виде голосового сообщения.
+    """
+
+    __slots__ = ('_converter',)
+
+    def __init__(
+            self,
+            bot: TeleBot,
+            chat: Chat,
+            converter: AudioConverter,
+    ):
+        super().__init__(bot, chat)
+        self._converter = converter
+
+    def send_file(
+            self,
+            file_path: str,
+            **kwargs
+    ):
+        try:
+            converted = self._converter.convert(file_path, "ogg")
+        except ConversionError:
+            return super().send_file(file_path, **kwargs)
+
+        with open(converted, 'rb') as file:
+            self._bot.send_voice(
+                self._chat.id,
+                file,
+                **self._args_to_telebot(**kwargs),
+            )
+
+
+class AudioReplyChannel(AudioOutputChannel):
+    """
+    Канал, отправляющий аудио-файл как ответ на сообщение.
+    """
+
+    __slots__ = ('_message', '_channel')
+
+    def __init__(
+            self,
+            message: Message,
+            channel: AudioOutputChannel,
+    ):
+        self._channel = channel
+        self._message = message
+
+    def send_file(self, file_path: str, *, telebot_add_args: Optional[dict[str, Any]] = None, **kwargs):
+        telebot_args = telebot_add_args.copy() if telebot_add_args is not None else {}
+        telebot_args['reply_to_message_id'] = self._message.id
+        self._channel.send_file(file_path, telebot_add_args=telebot_args, **kwargs)

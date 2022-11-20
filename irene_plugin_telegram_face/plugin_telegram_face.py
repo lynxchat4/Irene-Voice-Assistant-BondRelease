@@ -149,6 +149,7 @@ class TelegramFacePlugin(MagicPlugin):
                 send_message=send_message,
             )
 
+            self._bot = bot
             bot.infinity_polling()
 
     def terminate(self, *_args, **_kwargs):

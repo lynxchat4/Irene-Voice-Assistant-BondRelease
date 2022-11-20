@@ -164,7 +164,7 @@ class VAApi(metaclass=ABCMeta):
         ch: TextOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
-        ch, = self.get_outputs().get_channels(TextOutputChannel)  # type: ignore
+        ch, *_ch = self.get_outputs().get_channels(TextOutputChannel)  # type: ignore
 
         ch.send(text, **kwargs)
 
@@ -185,7 +185,7 @@ class VAApi(metaclass=ABCMeta):
         ch: AudioOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
-        ch, = self.get_outputs().get_channels(AudioOutputChannel)  # type: ignore
+        ch, *_ch = self.get_outputs().get_channels(AudioOutputChannel)  # type: ignore
 
         ch.send_file(file_path, **kwargs)
 
@@ -286,7 +286,7 @@ class VAApiExt(VAApi, ABC):
         ch: TextOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
-        ch, = self.get_outputs_preferring_relevant(TextOutputChannel)  # type: ignore
+        ch, *_ch = self.get_outputs_preferring_relevant(TextOutputChannel)  # type: ignore
 
         ch.send(text, **kwargs)
 
@@ -306,7 +306,7 @@ class VAApiExt(VAApi, ABC):
         ch: SpeechOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
-        ch, = self.get_outputs_preferring_relevant(SpeechOutputChannel)  # type: ignore
+        ch, *_ch = self.get_outputs_preferring_relevant(SpeechOutputChannel)  # type: ignore
 
         ch.send(text, **kwargs)
 
@@ -326,7 +326,7 @@ class VAApiExt(VAApi, ABC):
         ch: AudioOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
-        ch, = self.get_outputs_preferring_relevant(AudioOutputChannel)  # type: ignore
+        ch, *_ch = self.get_outputs_preferring_relevant(AudioOutputChannel)  # type: ignore
 
         ch.send_file(file_path, **kwargs)
 
