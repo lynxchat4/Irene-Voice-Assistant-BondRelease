@@ -78,7 +78,8 @@ class TimerPlugin(MagicPlugin):
         self._timer.start()
 
     def terminate(self, pm, *_args, **_kwargs):
-        self._timer.stop()
+        if self._timer is not None:
+            self._timer.stop()
 
     def define_commands(self, *_args, **_kwargs):
         return {

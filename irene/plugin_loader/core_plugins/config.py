@@ -204,6 +204,7 @@ class ConfigPlugin(MagicPlugin):
         self._defaults_dirs: Collection[Path] = []
         self._template_paths = template_paths
         self._template_extracted = False
+        self._watch_started = False
         self._watch_termination_request = Event()
         self._watch_terminated = Event()
 
@@ -420,6 +421,7 @@ class ConfigPlugin(MagicPlugin):
             self._init_config_scope(step)
 
     def run(self, *_args, **_kwargs):
+        self._watch_started = True
         try:
             while not self._watch_termination_request.wait(self.config['watchIntervalSeconds']):
                 watch_file_changes, watch_memory_changes = \
@@ -456,10 +458,11 @@ class ConfigPlugin(MagicPlugin):
             self._watch_terminated.set()
 
     def terminate(self, *_args, **_kwargs):
-        self._watch_termination_request.set()
-        self._watch_terminated.wait()
-        self._watch_terminated.clear()
-        self._watch_termination_request.clear()
+        if self._watch_started:
+            self._watch_termination_request.set()
+            self._watch_terminated.wait()
+            self._watch_terminated.clear()
+            self._watch_termination_request.clear()
 
         if self.config['storeOnShutdown']:
             for scope_name in self._scopes.keys():

@@ -101,6 +101,8 @@ class FilePlaybackTTS(ImmediatePlaybackTTS):
     движок, воспроизводящий речь немедленно) за счёт использования аудио-выхода (``AudioOutputChannel``).
     """
 
+    __slots__ = ('_tts', '_ao', '_tmp')
+
     def __init__(
             self,
             file_writing: FileWritingTTS,
@@ -126,7 +128,7 @@ class ImmediatePlaybackTTSOutput(SpeechOutputChannel):
     """
     Реализация ``SpeechOutputChannel``, делегирующая вывод речи экземпляру TTS-движка (``ImmediatePlaybackTTS``).
     """
-    __slots__ = 'tts'
+    __slots__ = '_tts'
 
     def __init__(self, tts: ImmediatePlaybackTTS):
         self._tts = tts
