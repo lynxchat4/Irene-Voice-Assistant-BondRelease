@@ -36,16 +36,19 @@ FROM python:3.9-slim-bullseye
 # https://github.com/hofstadter-io/hof/commit/838e8bbe2171ba8b9929b0ffa812c0f1ed61e975#diff-185fff912be701240e6e971b5548217a2027904efe9e365728169da65eb4983b
 RUN ln -s /bin/uname /usr/local/bin/uname
 
+RUN --mount=type=cache,target=/var/cache apt update && apt install -y ffmpeg
+
 RUN groupadd --gid 1001 python && useradd --create-home python --uid 1001 --gid python
 USER python:python
 WORKDIR /home/python
 
 COPY ./requirements-docker.txt ./requirements.txt
-RUN pip install -r ./requirements.txt
+RUN --mount=type=cache,target=/home/python/.cache,uid=1001,gid=1001 pip install -r ./requirements.txt
 
 COPY irene ./irene
 COPY irene_plugin_web_face ./irene_plugin_web_face
 COPY irene_plugin_web_face_frontend ./irene_plugin_web_face_frontend
+COPY irene_plugin_telegram_face ./irene_plugin_telegram_face
 COPY docker-config ./config
 
 COPY --link --from=frontend-builder /home/frontend/dist/ ./irene_plugin_web_face_frontend/frontend-dist/

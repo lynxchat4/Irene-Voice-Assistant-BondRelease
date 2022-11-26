@@ -13,3 +13,9 @@ uvicorn~=0.18.3
 uvicorn[standard]~=0.18.3
 fastapi~=0.81.0
 starlette~=0.19.1
+
+# Telegram
+pyTelegramBotAPI~=4.7.1
+
+# Серверное распознание голоса
+vosk~=0.3.7
