@@ -13,6 +13,10 @@ from irene_plugin_telegram_face.outputs import ReplyTextChannel, ChatTextChannel
 
 
 class TelegramPlaintextIOPlugin(MagicPlugin):
+    """
+    Обеспечивает приём и отправку текстовых сообщений через Telegram.
+    """
+
     name = 'telegram_io_plaintext'
     version = '0.1.0'
 

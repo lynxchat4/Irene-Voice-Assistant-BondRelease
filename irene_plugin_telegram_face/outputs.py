@@ -7,7 +7,7 @@ from irene.brain.abc import TextOutputChannel, AudioOutputChannel
 from irene.utils.audio_converter import AudioConverter, ConversionError
 
 
-def args_to_send_message(
+def _args_to_send_message(
         text: str,
         text_html: Optional[str] = None,
         text_markdown: Optional[str] = None,
@@ -42,7 +42,7 @@ class ChatTextChannel(TextOutputChannel):
     def send(self, text: str, **kwargs):
         self._bot.send_message(
             self._chat.id,
-            **args_to_send_message(text, **kwargs),
+            **_args_to_send_message(text, **kwargs),
         )
 
 
@@ -81,7 +81,7 @@ class BroadcastTextChannel(TextOutputChannel):
         self._chat_ids = chat_ids
 
     def send(self, text: str, **kwargs):
-        args = args_to_send_message(text, **kwargs)
+        args = _args_to_send_message(text, **kwargs)
 
         sent = False
 

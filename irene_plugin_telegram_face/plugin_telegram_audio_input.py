@@ -18,7 +18,13 @@ from irene.utils.audio_converter import AudioConverter, ConversionError
 from irene_plugin_telegram_face.inbound_messages import TelegramMessage
 
 
-class TelegramAudioOutputPlugin(MagicPlugin):
+class TelegramAudioInputPlugin(MagicPlugin):
+    """
+    Обеспечивает приём голосовых сообщений из Telegram.
+
+    Использует vosk с моделью, как правило, загруженной плагином `vosk_model_loader`, для распознания речи.
+    """
+
     name = 'telegram_input_audio'
     version = '0.1.0'
 

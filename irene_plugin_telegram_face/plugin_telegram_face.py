@@ -19,8 +19,44 @@ LOGIN_COMMAND = '/login'
 
 
 class TelegramFacePlugin(MagicPlugin):
+    """
+    Обеспечивает взаимодействие с ассистентом через Telegram-бота.
+    """
+
     name = 'face_telegram'
     version = '0.1.0'
+
+    config_comment = """
+    Настройки Telegram-бота.
+    
+    Доступные параметры:
+    - `token`               - токен бота.
+                              Для создания бота и получения токена обращайтесь к https://t.me/BotFather.
+                              После изменения токена, для его использования требуется перезапуск приложения.
+    - `authorizedChats`     - список id авторизованных чатов.
+                              Как правило, не редактируется вручную.
+    - `authorizationSecret` - пароль используемый при следующей авторизации
+    
+    ### Добавление авторизованных чатов
+    
+    По-умолчанию, бот будет игнорировать все входящие сообщения.
+    Чтобы бот начал обрабатывать сообщения из чата, чат нужно добавить в список авторизованных чатов.
+    Сделать это можно добавив чат в список `authorizedChats` вручную или, более удобно, с помощью следующей процедуры:
+    
+    1) Записать случайную строку (пароль) в параметр `authorizationSecret`.
+       Например,
+       
+       ```yaml
+       authorizationSecret: "password123"
+       ```
+
+    2) Отправить боту команду `/login` с паролем.
+
+       > /login password123
+    
+    Пароль сбрасывается после первого успешного использования.
+    Чтобы добавить ещё один чат, процедуру нужно повторить начиная с создания пароля.
+    """
 
     config: dict[str, Any] = {
         "token": None,
@@ -54,31 +90,33 @@ class TelegramFacePlugin(MagicPlugin):
         def auth(_bot: TeleBot, message: Message):
             authorized_chats: list = self.config.get('authorizedChats', [])
 
-            if message.chat.id not in authorized_chats:
-                if (text := message.text) is not None and text.startswith(LOGIN_COMMAND):
-                    self._logger.debug(
-                        "Запрос на авторизацию из чата %s (%s)",
+            if message.chat.id in authorized_chats:
+                return
+
+            if (text := message.text) is not None and text.startswith(LOGIN_COMMAND):
+                self._logger.debug(
+                    "Запрос на авторизацию из чата %s (%s)",
+                    message.chat.id, message.chat.username,
+                )
+
+                auth_secret = self.config['authorizationSecret']
+
+                if auth_secret is not None and auth_secret == text[len(LOGIN_COMMAND):].strip():
+                    self._logger.info(
+                        "Запрос на авторизацию из чата %s (%s) одобрен",
                         message.chat.id, message.chat.username,
                     )
 
-                    auth_secret = self.config['authorizationSecret']
+                    authorized_chats.append(message.chat.id)
+                    self.config['authorizedChats'] = authorized_chats
+                    self.config['authorizationSecret'] = None
 
-                    if auth_secret is not None and auth_secret == text[len(LOGIN_COMMAND):].strip():
-                        self._logger.info(
-                            "Запрос на авторизацию из чата %s (%s) одобрен",
-                            message.chat.id, message.chat.username,
-                        )
-
-                        authorized_chats.append(message.chat.id)
-                        self.config['authorizedChats'] = authorized_chats
-                        self.config['authorizationSecret'] = None
-
-                        bot.send_message(
-                            message.chat.id,
-                            "Доступ предоставлен",
-                            reply_to_message_id=message.message_id,
-                        )
-                        return
+                    bot.send_message(
+                        message.chat.id,
+                        "Доступ предоставлен",
+                        reply_to_message_id=message.message_id,
+                    )
+                    return
 
                 bot.send_message(
                     message.chat.id,
