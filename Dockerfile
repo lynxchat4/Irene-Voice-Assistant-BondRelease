@@ -35,8 +35,13 @@ FROM python:3.9-slim-bullseye
 # О да! Решение, найденное в удалённой ветке какого-то форума!
 # https://github.com/hofstadter-io/hof/commit/838e8bbe2171ba8b9929b0ffa812c0f1ed61e975#diff-185fff912be701240e6e971b5548217a2027904efe9e365728169da65eb4983b
 RUN ln -s /bin/uname /usr/local/bin/uname
+# https://github.com/docker/buildx/issues/495#issuecomment-995503425
+RUN ln -s /usr/bin/dpkg-split /usr/sbin/dpkg-split
+RUN ln -s /usr/bin/dpkg-deb /usr/sbin/dpkg-deb
+RUN ln -s /bin/rm /usr/sbin/rm
+RUN ln -s /bin/tar /usr/sbin/tar
 
-RUN --mount=type=cache,target=/var/cache apt update && apt install -y ffmpeg
+RUN --mount=type=cache,target=/var/cache,sharing=locked apt update && apt install -y ffmpeg
 
 RUN groupadd --gid 1001 python && useradd --create-home python --uid 1001 --gid python
 USER python:python
