@@ -116,11 +116,11 @@ class _ConnectionImpl(Connection):
         for variants in protocols:
             _negotiate_variants(variants)
 
+        self.send_message(MT_NEGOTIATE_AGREE, {'protocols': negotiated})
+
         for handler in proto_handlers:
             handler.start()
             self._protocols.append(handler)
-
-        self.send_message(MT_NEGOTIATE_AGREE, {'protocols': negotiated})
 
     def start_thread(self, im_handler: Callable[[InboundMessage], None]):
         self._message_processor = im_handler

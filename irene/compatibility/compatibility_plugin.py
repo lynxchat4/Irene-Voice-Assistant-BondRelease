@@ -7,11 +7,35 @@ from typing import Any, Callable, Type, Optional
 
 import irene.compatibility.vacore as vacore_module
 from irene import VAContextSource, VAApiExt
+from irene.brain.abc import AudioOutputChannel
 from irene.compatibility.vacore import VACore
-from irene.face.abc import FileWritingTTS, ImmediatePlaybackTTS
+from irene.face.abc import FileWritingTTS, ImmediatePlaybackTTS, MuteGroup
+from irene.face.mute_group import NULL_MUTE_GROUP
 from irene.face.tts_helpers import file_writing_tts_from_callbacks, immediate_playback_tts_from_callbacks
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin, operation, before
+
+
+def _make_playwav_channel_type(vacore, init, play):
+    initialized = False
+
+    class _LocalPlaywavChannel(AudioOutputChannel):
+        __slots__ = '_mg'
+
+        def __init__(self, mute_group: MuteGroup):
+            nonlocal initialized
+
+            self._mg = mute_group
+
+            if not initialized:
+                init(vacore)
+                initialized = True
+
+        def send_file(self, file_path: str, **kwargs):
+            with self._mg.muted():
+                play(vacore, file_path)
+
+    return _LocalPlaywavChannel
 
 
 class _OriginalPlugin(MagicPlugin):
@@ -32,6 +56,7 @@ class _OriginalPlugin(MagicPlugin):
 
         self._file_tts_types: dict[str, Type[FileWritingTTS]] = {}
         self._immediate_tts_types: dict[str, Type[ImmediatePlaybackTTS]] = {}
+        self._audio_output_types: dict[str, Type[AudioOutputChannel]] = {}
 
         try:
             self._core.config = self._manifest['default_options']
@@ -61,6 +86,14 @@ class _OriginalPlugin(MagicPlugin):
                         callbacks[0],
                         callbacks[2],
                     )
+
+        try:
+            playvaws: dict[str, tuple] = self._manifest['playwav']
+        except KeyError:
+            pass
+        else:
+            for (name, callbacks) in playvaws.items():
+                self._audio_output_types[name] = _make_playwav_channel_type(self._core, *callbacks)
 
         # вызов конструктора после присвоения `config` чтобы MagicPlugin смог его (config) заметить
         super().__init__()
@@ -120,9 +153,13 @@ class _OriginalPlugin(MagicPlugin):
 
         return nxt(prev, config, *args, **kwargs)
 
-    def create_audio_channel(self, *_args, **_kwargs):
-        # TODO
-        ...
+    def create_local_output(self, nxt, prev, pm: PluginManager, settings: dict[str, Any], *args, **kwargs):
+        requested_type = settings.get('type')
+
+        if requested_type in self._audio_output_types:
+            prev = prev or self._audio_output_types[requested_type](kwargs.get('mute_group', NULL_MUTE_GROUP))
+
+        return nxt(prev, pm, settings, *args, **kwargs)
 
 
 class OriginalCompatibilityPlugin(MagicPlugin):

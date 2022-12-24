@@ -31,6 +31,7 @@ app.provide(
                     ['in.text-direct', 'in.text-indirect'],
                     ['out.tts.serverside', 'out.text-plain'],
                     ['in.stt.clientside', 'in.text-indirect'],
+                    ['in.mute'],
                 ],
             },
         )

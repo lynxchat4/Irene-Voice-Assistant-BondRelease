@@ -5,7 +5,8 @@ from tempfile import gettempdir
 from typing import Optional, Callable, Any
 
 from irene.brain.abc import AudioOutputChannel, SpeechOutputChannel
-from irene.face.abc import ImmediatePlaybackTTS, FileWritingTTS, TTSResultFile
+from irene.face.abc import ImmediatePlaybackTTS, FileWritingTTS, TTSResultFile, MuteGroup
+from irene.face.mute_group import NULL_MUTE_GROUP
 
 
 class DisposableTTSResultFile(TTSResultFile):
@@ -61,9 +62,15 @@ def file_writing_tts_from_callbacks(
         init: Callable[[Any], None],
         say_to_file: Callable[[Any, str, str], None],
 ):
+    initialized = False
+
     class _FileWritingTTSImpl(FileWritingTTS):
         def __init__(self):
-            init(core)
+            nonlocal initialized
+
+            if not initialized:
+                init(core)
+                initialized = True
 
         def get_name(self) -> str:
             return name
@@ -128,10 +135,12 @@ class ImmediatePlaybackTTSOutput(SpeechOutputChannel):
     """
     Реализация ``SpeechOutputChannel``, делегирующая вывод речи экземпляру TTS-движка (``ImmediatePlaybackTTS``).
     """
-    __slots__ = '_tts'
+    __slots__ = ('_tts', '_mg')
 
-    def __init__(self, tts: ImmediatePlaybackTTS):
+    def __init__(self, tts: ImmediatePlaybackTTS, mute_group: MuteGroup = NULL_MUTE_GROUP):
         self._tts = tts
+        self._mg = mute_group
 
     def send(self, text: str, **kwargs):
-        self._tts.say(text, **kwargs)
+        with self._mg.muted():
+            self._tts.say(text, **kwargs)

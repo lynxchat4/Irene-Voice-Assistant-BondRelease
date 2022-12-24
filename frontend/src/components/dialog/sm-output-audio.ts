@@ -79,8 +79,6 @@ export const audioOutputMachine = createMachine<Context>(
                             id: 'playback',
                             src: 'runPlayback',
                         },
-                        entry: ['sendPlaybackStart'],
-                        exit: ['sendPlaybackEnd'],
                         on: {
                             TICK: {
                                 actions: ['sendProgressMessage']
@@ -115,14 +113,6 @@ export const audioOutputMachine = createMachine<Context>(
             ),
             sendDoneMessage: send(
                 (_, event) => ({ type: 'WS_SEND', data: { type: 'out.audio.link/playback-done', playbackId: event.data.playbackId } }),
-                { to: 'eventBus' }
-            ),
-            sendPlaybackStart: send(
-                () => ({ type: 'PLAYBACK_STARTED' }),
-                { to: 'eventBus' }
-            ),
-            sendPlaybackEnd: send(
-                () => ({ type: 'PLAYBACK_ENDED' }),
                 { to: 'eventBus' }
             ),
             storeToHistory: send(

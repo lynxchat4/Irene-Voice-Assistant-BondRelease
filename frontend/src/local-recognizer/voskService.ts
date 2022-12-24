@@ -1,3 +1,4 @@
+import { eventNameForMessageType } from '@/components/dialog/sm-helpers';
 import { createModel, type KaldiRecognizer } from 'vosk-browser';
 import type { ServerMessagePartialResult, ServerMessageResult } from 'vosk-browser/dist/interfaces';
 import type { AnyEventObject, Receiver } from 'xstate';
@@ -21,33 +22,26 @@ const createMediaStream = ({ sampleRate }: { sampleRate: number }): Promise<Medi
 };
 
 /**
- * Отключает микрофон в переданном `MediaStream` во время воспроизведения аудио.
+ * Отключает микрофон в переданном `MediaStream` во время воспроизведения аудио на этом клиенте или где-то в другом месте.
  * 
  * Предотвращает распознание речи голосового ассистента в качестве пользовательского ввода.
  * 
- * Теоретически, параметр `echoCancellation: true`, передаваемый при создании `MediaStream`, должен предотвращать попадание
- * воспроизводимого звука во входящий звуковой поток.
- * Однако, на практике этого не наблюдается.
+ * Использует сообщения, отправляемые сервером по протоколу `in.mute`.
  */
-const trackPlaybacks = ({ onReceived, mediaStream }: { onReceived: Receiver<AnyEventObject>, mediaStream: MediaStream }) => {
-    let runningPlaybacks = 0;
-
+const processMuteRequests = ({ onReceived, mediaStream }: { onReceived: Receiver<AnyEventObject>, mediaStream: MediaStream }) => {
     onReceived(event => {
+        const track =  mediaStream.getTracks()[0];
+
+        if (!track) {
+            return;
+        }
+
         switch (event.type) {
-            case 'PLAYBACK_STARTED':
-                ++runningPlaybacks;
-                break;
-            case 'PLAYBACK_ENDED':
-                --runningPlaybacks;
-                break;
+            case eventNameForMessageType('in.mute/mute'):
+                track.enabled = false;
+            case eventNameForMessageType('in.mute/unmute'):
+                track.enabled = true;
         }
-
-        if (runningPlaybacks < 0) {
-            console.debug("Что-то пошло не так: счётчик активных воспроизведений опустился ниже нуля.");
-            runningPlaybacks = 0;
-        }
-
-        mediaStream.getTracks()[0].enabled = (runningPlaybacks === 0);
     });
 };
 
@@ -143,7 +137,7 @@ export const run = async ({
 
         source.connect(recognizerProcessor);
 
-        trackPlaybacks({ onReceived, mediaStream });
+        processMuteRequests({ onReceived, mediaStream });
 
         return terminate;
     } catch (e) {

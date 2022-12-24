@@ -35,8 +35,8 @@ export const localRecognizerStateMachine = createMachine<Context>(
                         target: 'error',
                         actions: ['storeError'],
                     },
-                    PLAYBACK_STARTED: { actions: ['forwardToRecognizer'] },
-                    PLAYBACK_ENDED: { actions: ['forwardToRecognizer'] },
+                    [eventNameForMessageType('in.mute/mute')]: { actions: ['forwardToRecognizer'] },
+                    [eventNameForMessageType('in.mute/unmute')]: { actions: ['forwardToRecognizer'] },
                 },
                 states: {
                     startingIndirect: {
@@ -88,8 +88,8 @@ export const localRecognizerStateMachine = createMachine<Context>(
                 eventNameForProtocolName('in.stt.clientside'),
                 'WS_DISCONNECTED',
                 eventNameForMessageType('in.stt.clientside/processed'),
-                'PLAYBACK_STARTED',
-                'PLAYBACK_ENDED',
+                eventNameForMessageType('in.mute/mute'),
+                eventNameForMessageType('in.mute/unmute'),
             ]),
             runRecognition: (context: Context): InvokeCallback<AnyEventObject, AnyEventObject> => (callback, onReceived) => {
                 const p = (async () => {

@@ -9,9 +9,14 @@ __all__ = [
     'ImmediatePlaybackTTS',
     'TTSResultFile',
     'FileWritingTTS',
+    'LocalInput',
+    'Muteable',
+    'MuteGroup',
 ]
 
-from typing import Optional
+from contextlib import contextmanager
+
+from typing import Optional, Callable, ContextManager, Iterable
 
 
 class TTS(ABC):
@@ -93,7 +98,7 @@ class FileWritingTTS(TTS):
     @abstractmethod
     def say_to_file(self, text: str, file_base_path: Optional[str] = None, **kwargs) -> TTSResultFile:
         """
-        Синтезировать речь и записать её в файл.
+        Синтезирует речь и записать её в файл.
 
         Args:
             text:
@@ -108,3 +113,103 @@ class FileWritingTTS(TTS):
         Returns:
             Объект ``TTSResultFile`` содержащий сведения о файле, содержащем результат преобразования текста в речь.
         """
+
+
+class LocalInput(ABC):
+    """
+    Локальный метод ввода текста.
+    Как правило, представляет собой сочетание метода записи звука и метода распознания речи.
+    """
+
+    @abstractmethod
+    def run(self) -> ContextManager[tuple[Iterable[str], Callable[[], None]]]:
+        """
+        Запускает ввод текста и предоставляет итератор, по введённым командам.
+
+        >>> li: LocalInput = ...
+        >>> with li.run() as (lines, stop):
+        >>>     # stop() можно вызвать из другого потока чтобы прервать цикл ввода
+        >>>     for line in lines:
+        >>>         # Итератор будет блокировать поток до получения очередной строки введённого текста
+        >>>         # а так же, выбросит InterruptedException если ввод был прерван вызовом stop()
+        >>>         ... # Делаем что-нибудь с введённой строкой
+        """
+
+
+class Muteable(ABC):
+    """
+    Аудио-вход (локальный или удалённый), который можно временно (как правило, на время воспроизведения ответа
+    ассистента) заглушить.
+    """
+
+    @abstractmethod
+    def mute(self):
+        """
+        Временно заглушает аудио-вход.
+        """
+
+    @abstractmethod
+    def unmute(self):
+        """
+        Заново включает аудио-вход.
+        """
+
+
+class MuteGroup(Muteable):
+    """
+    Группа аудио-входов, которые можно заглушать одновременно.
+    """
+
+    @abstractmethod
+    def add_item(self, item: Muteable) -> Callable[[], None]:
+        """
+        Добавляет один вход в группу.
+
+        Предполагается, что вход не заглушён.
+        Если входы группы заглушены, то добавленный вход будет немедленно заглушён.
+
+        Returns:
+            Функция, удаляющая добавленный вход из группы
+        """
+
+    @abstractmethod
+    def mute(self):
+        """
+        Заглушает все входы в группе.
+
+        Входы будут заглушены, пока метод ``unmute()`` не будет вызван столько же раз, сколько был вызван метод
+        ``mute()``.
+        """
+
+    @abstractmethod
+    def unmute(self):
+        """
+        Заново включает все входы.
+
+        Чтобы вызов этого метода действительно включил входы, на каждый вызов ``mute()`` должен приходиться
+        соответствующий вызов ``unmute()``.
+
+        Raises:
+            AssertionError:
+                если метод ``unmute()`` был вызван больше раз, чем метод ``mute()``
+        """
+
+    @contextmanager
+    def muted(self):
+        """
+        Менеджер контекста, заглушающий все входы в группе на время выполнения кода внутри блока ``with``.
+
+        >>>    microphones: MuteGroup = ...
+        >>>
+        >>>    ...
+        >>>
+        >>>    with microphones.muted():
+        >>>        # Воспроизводим голосовой ответ, который, без заглушения микрофонов, мог бы быть распознан как ответ
+        >>>        # пользователя
+        >>>        play_response_audio()
+        """
+        try:
+            self.mute()
+            yield
+        finally:
+            self.unmute()
