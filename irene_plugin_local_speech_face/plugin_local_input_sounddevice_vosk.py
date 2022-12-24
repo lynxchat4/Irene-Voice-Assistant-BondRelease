@@ -39,8 +39,6 @@ _logger = getLogger(name)
 
 
 class _VoskSoundDeviceInput(LocalInput, Muteable):
-    _abort_sentinel = object()
-
     def __init__(self, pm: PluginManager, mute_group: MuteGroup):
         self._device_id = config['deviceId']
         self._device_info = sounddevice.query_devices(self._device_id, 'input')
@@ -63,6 +61,7 @@ class _VoskSoundDeviceInput(LocalInput, Muteable):
     @contextlib.contextmanager
     def run(self):
         queue = Queue()
+        aborted = False
 
         def _stream_callback(data, _frames, _time, status):
             if status:
@@ -85,8 +84,8 @@ class _VoskSoundDeviceInput(LocalInput, Muteable):
             while True:
                 msg = queue.get()
 
-                if msg is self._abort_sentinel:
-                    raise InterruptedError()
+                if msg is None or aborted:
+                    return
                 elif self._muted:
                     pass
                 elif recognizer.AcceptWaveform(msg):
@@ -99,7 +98,9 @@ class _VoskSoundDeviceInput(LocalInput, Muteable):
                         yield text
 
         def _abort():
-            queue.put(self._abort_sentinel)
+            nonlocal aborted
+            aborted = True
+            queue.put(None)
 
         remove_from_mg = self._mg.add_item(self)
 
