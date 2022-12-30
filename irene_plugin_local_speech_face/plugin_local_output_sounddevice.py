@@ -33,6 +33,8 @@ config_comment = f"""
                         Если наоборот, наблюдается "проглатывание" окончаний фраз, то попробуйте увеличить значение
                         параметра.
 
+Изменения применяются при следующем воспроизведении после их загрузки. Перезапуск приложения не требуется.
+
 Доступные устройства:
 {sounddevice.query_devices()}
 """
@@ -41,6 +43,11 @@ _logger = getLogger(name)
 
 
 class _SoundDeviceAudioOutput(AudioOutputChannel):
+    def check(self):
+        sounddevice.query_devices(config['deviceId'], 'output')
+
+        return self
+
     def send_file(self, file_path: str, **kwargs):
         _logger.debug("Собираюсь воспроизводить файл %s", file_path)
 
@@ -71,6 +78,9 @@ def create_local_output(
         **kwargs
 ):
     if settings.get('type') == 'sounddevice':
-        prev = prev if prev is not None else _SoundDeviceAudioOutput()
+        try:
+            prev = prev if prev is not None else _SoundDeviceAudioOutput().check()
+        except sounddevice.PortAudioError as e:
+            _logger.error("Не удалось инициализировать portaudio: %s", e)
 
     return nxt(prev, pm, settings, *args, **kwargs)

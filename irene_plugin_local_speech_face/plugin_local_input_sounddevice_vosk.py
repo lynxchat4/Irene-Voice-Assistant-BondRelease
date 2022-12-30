@@ -5,7 +5,6 @@ from queue import Queue
 from typing import Any, Optional, Callable, Iterable
 
 import sounddevice
-import vosk
 
 from irene.face.abc import LocalInput, Muteable, MuteGroup
 from irene.face.mute_group import NULL_MUTE_GROUP
@@ -27,9 +26,10 @@ config_comment = f"""
 - `deviceId`      - номер устройства ввода (микрофона) которое будет использовано для прослушивания голосовых команд.
                     См. список устройств далее.
                     Если `null`, то будет использоваться устройство по-умолчанию.
-                    Для применения изменений требуется перезапуск приложения.
 - `sampleRate`    - частота дискретизации ввода.
                     Если `null`, то будет использоваться частота по-умолчанию для выбранного устройства.
+
+Для применения любых изменений требуется перезапуск приложения.
 
 Доступные устройства:
 {sounddevice.query_devices()}
@@ -60,6 +60,8 @@ class _VoskSoundDeviceInput(LocalInput, Muteable):
 
     @contextlib.contextmanager
     def run(self):
+        import vosk
+
         queue = Queue()
         aborted = False
 
@@ -133,9 +135,12 @@ def create_local_input(
         **kwargs
 ):
     if settings.get('type') == 'vosk+sounddevice':
-        prev = prev if prev is not None else _VoskSoundDeviceInput(
-            pm,
-            mute_group=kwargs.get('mute_group', NULL_MUTE_GROUP),
-        )
+        try:
+            prev = prev if prev is not None else _VoskSoundDeviceInput(
+                pm,
+                mute_group=kwargs.get('mute_group', NULL_MUTE_GROUP),
+            )
+        except sounddevice.PortAudioError as e:
+            _logger.error("Не удалось инициализировать portaudio: %s", e)
 
     return nxt(prev, pm, settings, *args, **kwargs)

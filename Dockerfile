@@ -41,7 +41,7 @@ RUN ln -s /usr/bin/dpkg-deb /usr/sbin/dpkg-deb
 RUN ln -s /bin/rm /usr/sbin/rm
 RUN ln -s /bin/tar /usr/sbin/tar
 
-RUN --mount=type=cache,target=/var/cache,sharing=locked apt update && apt install -y ffmpeg
+RUN --mount=type=cache,target=/var/cache,sharing=locked apt update && apt install -y ffmpeg portaudio19-dev
 
 RUN groupadd --gid 1001 python && useradd --create-home python --uid 1001 --gid python
 USER python:python
@@ -54,11 +54,12 @@ COPY irene ./irene
 COPY irene_plugin_web_face ./irene_plugin_web_face
 COPY irene_plugin_web_face_frontend ./irene_plugin_web_face_frontend
 COPY irene_plugin_telegram_face ./irene_plugin_telegram_face
+COPY irene_plugin_local_speech_face ./irene_plugin_local_speech_face
 COPY docker-config ./config
 
 COPY --link --from=frontend-builder /home/frontend/dist/ ./irene_plugin_web_face_frontend/frontend-dist/
 COPY --link --from=silero-downloader /home/downloader/models/ ./silero-models/
-COPY --link --from=vosk-downloader /home/downloader/models/ ./vosk-models/
+COPY --link --chown=1001:1001 --from=vosk-downloader /home/downloader/models/ ./vosk-models/
 COPY --link --chown=1001:1001 --from=ssl-generator /home/generator/ssl/ ./ssl/
 
 EXPOSE 8086
