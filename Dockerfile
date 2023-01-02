@@ -41,7 +41,7 @@ RUN ln -s /usr/bin/dpkg-deb /usr/sbin/dpkg-deb
 RUN ln -s /bin/rm /usr/sbin/rm
 RUN ln -s /bin/tar /usr/sbin/tar
 
-RUN --mount=type=cache,target=/var/cache,sharing=locked apt update && apt install -y ffmpeg portaudio19-dev
+RUN --mount=type=cache,target=/var/cache,sharing=locked apt update && apt install -y ffmpeg libportaudio2
 
 RUN groupadd --gid 1001 python && useradd --create-home python --uid 1001 --gid python
 USER python:python
