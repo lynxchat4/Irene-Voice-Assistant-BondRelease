@@ -62,7 +62,7 @@ pip install -r requirements.txt
 
 ```shell
 cd ./frontend
-npm ci && npm build
+npm ci && npm run build
 cd ..
 ```
 
