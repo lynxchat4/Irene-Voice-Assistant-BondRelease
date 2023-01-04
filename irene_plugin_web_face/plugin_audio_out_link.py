@@ -14,7 +14,6 @@ from irene.face.abc import MuteGroup
 from irene.face.mute_group import NULL_MUTE_GROUP
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin
-from irene.plugin_loader.run_operation import call_all_as_wrappers
 from irene_plugin_web_face.abc import ProtocolHandler, Connection
 from irene_plugin_web_face.protocol import MT_OUT_AUDIO_LINK_PLAYBACK_PROGRESS, MT_OUT_AUDIO_LINK_PLAYBACK_DONE, \
     PROTOCOL_OUT_AUDIO_LINK, MT_OUT_AUDIO_LINK_PLAYBACK_REQUEST
@@ -111,24 +110,15 @@ class WebAudioOutImpl(AudioOutputChannel, ProtocolHandler):
 
     def __init__(
             self,
-            pm: PluginManager,
             conn: Connection,
             bindings: FileBindings,
-            syncers: dict[str, PlaybackEndSyncer]
+            syncers: dict[str, PlaybackEndSyncer],
+            mute_group: MuteGroup,
     ):
-        self._pm = pm
         self._connection = conn
         self._file_bindings = bindings
         self._syncers = syncers
-
-        mute_group: Optional[MuteGroup] = call_all_as_wrappers(
-            self._pm.get_operation_sequence('get_mute_group'),
-            None,
-            self._pm,
-            connection=self._connection,
-        )
-
-        self._mute_group = NULL_MUTE_GROUP if mute_group is None else mute_group
+        self._mute_group = mute_group
 
         conn.register_output(self)
         conn.register_message_type(MT_OUT_AUDIO_LINK_PLAYBACK_PROGRESS, self._handle_progress)
@@ -213,7 +203,12 @@ class WebAudioOutputPlugin(MagicPlugin):
             *args,
             **kwargs):
         if proto_name == PROTOCOL_OUT_AUDIO_LINK:
-            prev = prev or WebAudioOutImpl(pm, connection, self._file_bindings, self._syncers)
+            prev = prev or WebAudioOutImpl(
+                connection,
+                self._file_bindings,
+                self._syncers,
+                kwargs.get('mute_group', NULL_MUTE_GROUP),
+            )
         return nxt(prev, proto_name, connection, pm, *args, **kwargs)
 
     def terminate(self, *_args, **_kwargs):

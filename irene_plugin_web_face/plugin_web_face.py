@@ -10,6 +10,8 @@ from starlette.websockets import WebSocketDisconnect
 
 from irene.brain.abc import Brain, OutputChannel, InboundMessage, OutputChannelPool
 from irene.brain.output_pool import OutputPoolImpl
+from irene.face.abc import MuteGroup
+from irene.face.mute_group import NULL_MUTE_GROUP
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin
 from irene.plugin_loader.run_operation import call_all_as_wrappers
@@ -83,6 +85,14 @@ class _ConnectionImpl(Connection):
         negotiated = []
         proto_handlers: list[ProtocolHandler] = []
 
+        mute_group: MuteGroup = call_all_as_wrappers(
+            pm.get_operation_sequence('get_mute_group'),
+            None,
+            pm,
+            {},
+            connection=self,
+        ) or NULL_MUTE_GROUP
+
         def _negotiate_variants(protocol_variants: str):
             for variant in protocol_variants:
                 if variant is None or variant in negotiated:
@@ -94,7 +104,8 @@ class _ConnectionImpl(Connection):
                     None,
                     variant,
                     self,
-                    pm
+                    pm,
+                    mute_group=mute_group,
                 )
 
                 if proto is None:

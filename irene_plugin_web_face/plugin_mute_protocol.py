@@ -1,8 +1,7 @@
 from typing import Callable, Optional
 
 from irene.face.abc import MuteGroup, Muteable
-from irene.plugin_loader.abc import PluginManager
-from irene.plugin_loader.run_operation import call_all_as_wrappers
+from irene.face.mute_group import NULL_MUTE_GROUP
 from irene_plugin_web_face.abc import ProtocolHandler, Connection
 from irene_plugin_web_face.protocol import PROTOCOL_IN_MUTE, MT_PROTOCOL_IN_MUTE_MUTE, MT_PROTOCOL_IN_MUTE_UNMUTE
 
@@ -11,25 +10,18 @@ version = '0.1.0'
 
 
 class _MuteProtocolHandler(ProtocolHandler, Muteable):
-    def __init__(self, connection: Connection, pm: PluginManager):
+    def __init__(self, connection: Connection, mg: MuteGroup):
         self._connection = connection
-        self._pm = pm
+        self._mg = mg
         self._remove: Optional[Callable] = None
 
     def start(self):
-        mute_group: Optional[MuteGroup] = call_all_as_wrappers(
-            self._pm.get_operation_sequence('get_mute_group'),
-            None,
-            self._pm,
-            connection=self._connection,
-        )
-
-        if mute_group is not None:
-            self._remove = mute_group.add_item(self)
+        self._remove = self._mg.add_item(self)
 
     def terminate(self):
         if self._remove is not None:
             self._remove()
+            self._remove = None
 
     def mute(self):
         self._connection.send_message(MT_PROTOCOL_IN_MUTE_MUTE, {})
@@ -43,10 +35,12 @@ def init_client_protocol(
         prev: Optional[ProtocolHandler],
         proto_name: str,
         connection: Connection,
-        pm: PluginManager,
         *args,
         **kwargs):
     if proto_name == PROTOCOL_IN_MUTE:
-        prev = prev or _MuteProtocolHandler(connection, pm)
+        prev = prev or _MuteProtocolHandler(
+            connection,
+            kwargs.get('mute_group', NULL_MUTE_GROUP)
+        )
 
-    return nxt(prev, proto_name, connection, pm, *args, **kwargs)
+    return nxt(prev, proto_name, connection, *args, **kwargs)
