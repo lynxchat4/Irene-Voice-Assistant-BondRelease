@@ -10,6 +10,8 @@ from os.path import basename, dirname
 from typing import Optional, Any
 from urllib.parse import urlparse
 
+import torch
+
 from irene.face.abc import FileWritingTTS, TTSResultFile
 from irene.face.tts_helpers import create_disposable_tts_result_file
 from irene.plugin_loader.file_patterns import pick_random_file, first_substitution
@@ -57,8 +59,6 @@ def _download_model_file() -> str:
     target_path = first_substitution(config['model_storage_path'], override_vars=dict(file_name=file_basename))
     os.makedirs(dirname(target_path), exist_ok=True)
 
-    import torch
-
     torch.hub.download_url_to_file(raw_url, target_path)
 
     _logger.info(f"Файл модели скачан в '{target_path}'.")
@@ -68,8 +68,6 @@ def _download_model_file() -> str:
 
 @cache
 def _load_model(file: str) -> Any:
-    import torch
-
     device = torch.device('cpu')
     torch.set_num_threads(config['threads'])
 
