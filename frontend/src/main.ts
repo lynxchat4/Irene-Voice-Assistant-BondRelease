@@ -13,6 +13,7 @@ import { plaintextOutputMachine } from './components/dialog/sm-output-plaintext'
 import { EventBus, eventBusKey } from './components/eventBus';
 import './main.css';
 import { localRecognizerStateMachine } from './local-recognizer/sm';
+import { inputStreamingStateMachine } from './audio-input-streaming/sm';
 
 const app = createApp(App);
 
@@ -30,7 +31,7 @@ app.provide(
                     ['out.audio.link'],
                     ['in.text-direct', 'in.text-indirect'],
                     ['out.tts.serverside', 'out.text-plain'],
-                    ['in.stt.clientside', 'in.text-indirect'],
+                    ['in.stt.serverside', 'in.stt.clientside', 'in.text-indirect'],
                     ['in.mute'],
                 ],
             },
@@ -91,6 +92,20 @@ app.provide(
     'localRecognizerMachine',
     interpret(
         localRecognizerStateMachine.withConfig(
+            {},
+            {
+                eventBus,
+                // TODO: Настраивать в настройках плагина (?)
+                sampleRate: 48000,
+            },
+        ),
+    ).start()
+);
+
+app.provide(
+    'inputStreamerMachine',
+    interpret(
+        inputStreamingStateMachine.withConfig(
             {},
             {
                 eventBus,
