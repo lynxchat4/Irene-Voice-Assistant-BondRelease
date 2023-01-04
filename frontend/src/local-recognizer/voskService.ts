@@ -71,9 +71,7 @@ export const run = async ({
 
         terminate = terminateStream;
 
-        const audioContext = new AudioContext({
-            sampleRate
-        });
+        const audioContext = new AudioContext();
 
         const terminateContext = () => audioContext.close();
 
@@ -145,15 +143,6 @@ export const run = async ({
             await terminate?.();
         } catch (ee) {
             console.error(ee);
-        }
-
-        if (
-            e instanceof Error &&
-            /AudioContext.createMediaStreamSource: Connecting AudioNodes from AudioContexts with different sample-rate is currently not supported\./.test(e.message) &&
-            /Firefox/g.test(navigator.userAgent)
-        ) {
-            // Firefox иногда настолько пытается защитить приватность пользователя, что скрывает битрейт микрофона даже от самого себя
-            throw new Error('Не удалось запустить распознавание голоса. Попробуйте отключить флаг privacy.resistFingerprinting в настройках (about:config)');
         }
 
         throw e;
