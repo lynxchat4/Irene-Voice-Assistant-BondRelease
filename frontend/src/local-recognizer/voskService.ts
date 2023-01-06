@@ -39,6 +39,7 @@ const processMuteRequests = ({ onReceived, mediaStream }: { onReceived: Receiver
         switch (event.type) {
             case eventNameForMessageType('in.mute/mute'):
                 track.enabled = false;
+                break;
             case eventNameForMessageType('in.mute/unmute'):
                 track.enabled = true;
         }
