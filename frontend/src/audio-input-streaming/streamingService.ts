@@ -78,7 +78,7 @@ export const run = async ({
 
         const source = audioContext.createMediaStreamSource(mediaStream);
 
-        const scriptProcessor = audioContext.createScriptProcessor(4096 * 4, 1, 1);
+        const scriptProcessor = audioContext.createScriptProcessor(1024, 1, 1);
 
         scriptProcessor.onaudioprocess = event => {
             const inputFloats = event.inputBuffer.getChannelData(0);

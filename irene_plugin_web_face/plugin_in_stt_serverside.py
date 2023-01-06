@@ -27,8 +27,6 @@ version = '0.1.0'
 
 _logger = getLogger(name)
 
-_dump_received_data = False
-
 
 class _ServerSttMessage(PlainTextMessage):
     __slots__ = ('_connection', '_processed')
@@ -97,14 +95,13 @@ class _RecognizerWorker(Thread, Muteable):
 
         self._connection = connection
         self._queue: Queue[Callable[[], bool]] = Queue()
+        self._buffer: list[bytes] = []
+        self._buffer_length: int = 0
         self._recognizer = vosk.KaldiRecognizer(model, sample_rate)
         self._need_stop = False
 
         self._mute_group = mute_group
         self._muted = False
-
-        if _dump_received_data:
-            self._dump = open(f'./server-stt-dump-{connection_id}.raw', 'wb')
 
     def mute(self):
         self._muted = True
@@ -126,11 +123,8 @@ class _RecognizerWorker(Thread, Muteable):
         if self._muted:
             return True
 
-        self._recognizer.AcceptWaveform(chunk)
-
-        if _dump_received_data:
-            self._dump.write(chunk)
-            self._dump.flush()
+        if not self._recognizer.AcceptWaveform(chunk):
+            return True
 
         recognized = json.loads(self._recognizer.Result())
         text = recognized['text']
