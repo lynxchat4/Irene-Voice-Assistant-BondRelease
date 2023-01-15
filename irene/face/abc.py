@@ -4,6 +4,8 @@
 
 from abc import ABC, abstractmethod
 
+from irene.utils.metadata import Metadata
+
 __all__ = [
     'TTS',
     'ImmediatePlaybackTTS',
@@ -19,7 +21,7 @@ from contextlib import contextmanager
 from typing import Optional, Callable, ContextManager, Iterable
 
 
-class TTS(ABC):
+class TTS(Metadata, ABC):
     """
     Базовый класс для фасада TTS (Text-To-Speech) движка.
     """

@@ -2,7 +2,7 @@ import os
 import uuid
 from os.path import join
 from tempfile import gettempdir
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, Mapping
 
 from irene.brain.abc import AudioOutputChannel, SpeechOutputChannel
 from irene.face.abc import ImmediatePlaybackTTS, FileWritingTTS, TTSResultFile, MuteGroup
@@ -130,6 +130,10 @@ class FilePlaybackTTS(ImmediatePlaybackTTS):
         with self._tts.say_to_file(text, self._tmp, **kwargs) as f:
             self._ao.send_file(f.get_full_path(), alt_text=text)
 
+    @property
+    def meta(self) -> Mapping[str, Any]:
+        return {**self._tts.meta, **self._ao.meta}
+
 
 class ImmediatePlaybackTTSOutput(SpeechOutputChannel):
     """
@@ -144,3 +148,7 @@ class ImmediatePlaybackTTSOutput(SpeechOutputChannel):
     def send(self, text: str, **kwargs):
         with self._mg.muted():
             self._tts.say(text, **kwargs)
+
+    @property
+    def meta(self) -> Mapping[str, Any]:
+        return self._tts.meta

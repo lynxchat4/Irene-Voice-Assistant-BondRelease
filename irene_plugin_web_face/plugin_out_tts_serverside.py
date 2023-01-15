@@ -1,7 +1,7 @@
 import threading
 from collections import Callable
 from logging import getLogger
-from typing import Optional
+from typing import Optional, Iterable
 
 from irene.brain.abc import AudioOutputChannel, OutputChannelNotFoundError
 from irene.face.abc import FileWritingTTS
@@ -14,49 +14,68 @@ from irene_plugin_web_face.protocol import PROTOCOL_OUT_SERVER_SIDE_TTS
 _logger = getLogger('serverside-tts')
 
 name = 'plugin_out_tts_serverside'
-version = '0.1.0'
+version = '0.2.0'
 
 config = {
-    'tts': {
-        'type': 'silero_v3',
-    },
+    'ttss': [
+        {
+            'type': 'silero_v3',
+            'model_selector': {
+                'gender': 'female',
+                'locale': 'ru',
+            },
+        },
+        {
+            'type': 'silero_v3',
+            'model_selector': {
+                'gender': 'female',
+                'locale': 'en',
+            },
+        },
+    ],
 }
 
 _tts_mx = threading.Lock()
-_tts: Optional[FileWritingTTS] = None
+_ttss: Optional[list[FileWritingTTS]] = None
 
 
 class _NonFatalError(Exception):
     pass
 
 
-def _init_tts(pm: PluginManager) -> FileWritingTTS:
-    global _tts
-    if (tts := _tts) is not None:
-        return tts
+def _init_ttss(pm: PluginManager) -> list[FileWritingTTS]:
+    global _ttss
+    if (ttss := _ttss) is not None:
+        return ttss
 
     with _tts_mx:
-        if (tts := _tts) is not None:
-            return tts
+        if (ttss := _ttss) is not None:
+            return ttss
 
-        _tts = call_all_as_wrappers(
-            pm.get_operation_sequence('create_file_tts'),
-            None,
-            config['tts'],
-            pm,
-        )
+        ttss = []
 
-        if _tts is None:
-            raise _NonFatalError(
-                "не удалось создать TTS. "
-                f"Проверьте настройки плагина {name}."
+        for tts_settings in config['ttss']:
+            tts = call_all_as_wrappers(
+                pm.get_operation_sequence('create_file_tts'),
+                None,
+                tts_settings,
+                pm,
             )
 
-        return _tts
+            if tts is not None:
+                ttss.append(tts)
+            else:
+                _logger.warning("Не удалось создать TTS с настройками: %s", tts_settings)
+
+        if len(ttss) > 0:
+            _ttss = ttss
+            return _ttss
+
+        raise _NonFatalError("Не удалось создать ни один TTS.")
 
 
 class _ServersideTTSOutput(ProtocolHandler):
-    def __init__(self, connection: Connection, tts: FileWritingTTS):
+    def __init__(self, connection: Connection, ttss: Iterable[FileWritingTTS]):
         try:
             audio_output, = connection.get_associated_outputs().get_channels(AudioOutputChannel)  # type: ignore
         except OutputChannelNotFoundError:
@@ -67,14 +86,15 @@ class _ServersideTTSOutput(ProtocolHandler):
                 f"'{PROTOCOL_OUT_SERVER_SIDE_TTS}'."
             )
 
-        connection.register_output(
-            ImmediatePlaybackTTSOutput(
-                FilePlaybackTTS(
-                    tts,
-                    audio_output,
+        for tts in ttss:
+            connection.register_output(
+                ImmediatePlaybackTTSOutput(
+                    FilePlaybackTTS(
+                        tts,
+                        audio_output,
+                    )
                 )
             )
-        )
 
     def start(self):
         pass
@@ -93,7 +113,7 @@ def init_client_protocol(
         **kwargs):
     if proto_name == PROTOCOL_OUT_SERVER_SIDE_TTS:
         try:
-            prev = prev or _ServersideTTSOutput(connection, _init_tts(pm))
+            prev = prev or _ServersideTTSOutput(connection, _init_ttss(pm))
         except _NonFatalError as e:
             _logger.warning(f"Не удалось настроить серверный TTS: {e}")
 
@@ -101,8 +121,9 @@ def init_client_protocol(
 
 
 def terminate(*_args, **_kwargs):
-    global _tts
+    global _ttss
     with _tts_mx:
-        if (tts := _tts) is not None:
-            _tts = None
-            tts.terminate()
+        if (ttss := _ttss) is not None:
+            _ttss = None
+            for tts in ttss:
+                tts.terminate()

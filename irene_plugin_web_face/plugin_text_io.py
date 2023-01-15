@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Optional
+from typing import Callable, Optional, Any, Mapping
 
 from irene.brain.abc import TextOutputChannel, InboundMessage, OutputChannelPool, VAContext, VAApi
 from irene.brain.contexts import BaseContextWrapper
@@ -12,6 +12,17 @@ from irene_plugin_web_face.protocol import MT_OUT_TEXT_PLAIN_TEXT, PROTOCOL_OUT_
 
 name = 'remote_text_protocols'
 version = '0.1.0'
+
+config = {
+    "output_metadata": {
+        "gender": "any",
+        "locale": "any",
+        "gender.female": True,
+        "gender.male": True,
+        "locale.ru": True,
+        "locale.en": True,
+    },
+}
 
 
 class _DirectTextMessage(PlainTextMessage):
@@ -33,6 +44,10 @@ class _TextOutputImpl(TextOutputChannel, ProtocolHandler):
 
     def terminate(self):
         pass
+
+    @property
+    def meta(self) -> Mapping[str, Any]:
+        return config['output_metadata']
 
 
 class _TextInputImpl(ProtocolHandler):

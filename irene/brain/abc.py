@@ -5,6 +5,8 @@
 from abc import ABCMeta, abstractmethod, ABC
 from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection, Tuple, ContextManager, Protocol
 
+from irene.utils.metadata import Metadata
+
 __all__ = [
     'VAApi',
     'VAApiExt',
@@ -25,8 +27,10 @@ __all__ = [
     'Brain',
 ]
 
+from irene.utils.predicate import Predicate
 
-class OutputChannel:
+
+class OutputChannel(Metadata, metaclass=ABCMeta):
     """
     Канал, по которому ассистент может направлять ответные сообщения в том или ином виде.
     """
@@ -36,8 +40,8 @@ TChan = TypeVar('TChan', bound=OutputChannel)
 
 
 class OutputChannelNotFoundError(Exception):
-    def __init__(self, cla55: Type[OutputChannel]):
-        super().__init__(f'Не удалось подобрать канал типа {cla55}')
+    def __init__(self):
+        super().__init__(f'Не удалось подобрать канал вывода')
 
 
 class OutputChannelPool(ABC):
@@ -46,7 +50,25 @@ class OutputChannelPool(ABC):
     """
 
     @abstractmethod
-    def get_channels(self, typ: Type[TChan]) -> Collection[TChan]:
+    def query_channels(self, predicate: Callable[[OutputChannel], bool]) -> Collection[OutputChannel]:
+        """
+        Подбирает каналы вывода, соответствующие заданному предикату (условию).
+
+        Args:
+            predicate:
+                функция (callable) возвращающая ``True`` для каналов, которые должны быть возвращены из метода
+                ``query_channels``
+        Returns:
+            коллекция каналов, соответствующих запросу
+        Raises:
+            OutputChannelNotFoundError - если подходящих каналов не найдено
+        """
+
+    def get_channels(
+            self,
+            typ: Type[TChan],
+            predicate: Optional[Callable[[TChan], bool]] = None
+    ) -> Collection[TChan]:
         """
         Возвращает каналы из этого пула, наследующие заданный класс.
 
@@ -55,11 +77,17 @@ class OutputChannelPool(ABC):
         Args:
             typ:
                 необходимый тип канала
+            predicate:
+                дополнительные критерии выбора каналов
         Returns:
             коллекция каналов, соответствующих запросу
         Raises:
             OutputChannelNotFoundError - если подходящих каналов не найдено
         """
+        type_predicate: Predicate[OutputChannel] = \
+            Predicate.true() if typ is OutputChannel else Predicate.from_callable(typ.__instancecheck__)
+
+        return self.query_channels(type_predicate & predicate)  # type: ignore
 
 
 class InboundMessage(ABC):
