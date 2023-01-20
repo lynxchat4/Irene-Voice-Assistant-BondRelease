@@ -21,15 +21,15 @@ config = {
         {
             'type': 'silero_v3',
             'model_selector': {
-                'gender': 'female',
-                'locale': 'ru',
+                'gender.female': True,
+                'locale.ru': True,
             },
         },
         {
             'type': 'silero_v3',
             'model_selector': {
-                'gender': 'female',
-                'locale': 'en',
+                'gender.female': True,
+                'locale.ru': True,
             },
         },
     ],
