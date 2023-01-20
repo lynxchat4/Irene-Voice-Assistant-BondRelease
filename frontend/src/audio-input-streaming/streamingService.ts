@@ -26,7 +26,7 @@ const createMediaStream = ({ sampleRate }: { sampleRate: number }): Promise<Medi
  */
 const processMuteRequests = ({ onReceived, mediaStream, context }: { onReceived: Receiver<AnyEventObject>, mediaStream: MediaStream, context: AudioContext }) => {
     onReceived(event => {
-        const track =  mediaStream.getTracks()[0];
+        const track = mediaStream.getTracks()[0];
 
         if (!track) {
             return;
@@ -46,7 +46,7 @@ const processMuteRequests = ({ onReceived, mediaStream, context }: { onReceived:
 export const run = async ({
     sampleRate = 48000,
     gain = 1.0,
-    onReceived = () => {},
+    onReceived = () => { },
     sendChunk,
 }: {
     sampleRate?: number,
@@ -119,3 +119,23 @@ export const run = async ({
 
     return terminate;
 }
+
+export const streamingSupported = (() => {
+    let supported = false;
+    const ac = new AudioContext();
+
+    try {
+
+        supported = !!ac.createScriptProcessor(1024);
+    } catch (error) {
+        console.warn(error);
+    } finally {
+        ac.close();
+    }
+
+    if (!supported) {
+        console.warn("Потоковый ввод аудио не поддерживается");
+    }
+
+    return supported;
+})();

@@ -30,11 +30,13 @@ export const inputStreamingStateMachine = createMachine<Context>(
                 }
             },
             waiting: {
+                tags: ['enabled'],
                 on: {
                     [eventNameForMessageType('in.stt.serverside/ready')]: { target: 'streaming' }
                 }
             },
             streaming: {
+                tags: ['enabled'],
                 on: {
                     [eventNameForMessageType('in.stt.serverside/processed')]: {
                         actions: ['forwardProcessedToHistory'],
@@ -59,6 +61,7 @@ export const inputStreamingStateMachine = createMachine<Context>(
                         }
                     },
                     active: {
+                        tags: ['active'],
                         invoke: {
                             src: 'streamer',
                             id: 'streamer',
@@ -79,7 +82,7 @@ export const inputStreamingStateMachine = createMachine<Context>(
                 },
             },
             error: {
-
+                tags: ['error'],
             }
         }
     },

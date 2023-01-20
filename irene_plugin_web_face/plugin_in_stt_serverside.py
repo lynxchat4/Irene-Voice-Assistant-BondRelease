@@ -135,7 +135,7 @@ class _RecognizerWorker(Thread, Muteable):
             self._connection.send_message(MT_IN_SERVER_SIDE_STT_RECOGNIZED, dict(text=text))
 
             self._connection.receive_inbound_message(
-                PlainTextMessage(text, self._connection.get_associated_outputs())
+                _ServerSttMessage(self._connection, text)
             )
 
         return True

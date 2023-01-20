@@ -7,6 +7,9 @@ export const Config = z.object({
     comment: z.string().optional(),
 });
 
+// scope конфигурации, отвечающий за настройки браузерного интерфейса
+export const FRONTEND_CONFIG_SCOPE = 'web_face_frontend';
+
 export type Config = z.infer<typeof Config>;
 
 const ConfigList = z.array(Config);
@@ -18,11 +21,16 @@ export const fetchConfigs = async () => {
 }
 
 export const fetchConfig = async (scope: string) => {
-    const res = await axios.get(`/api/config/${scope}`);
+    const res = await axios.get(`/api/config/configs/${scope}`);
 
     return Config.parse(res.data);
 }
 
 export const updateConfig = async (scope: string, config: object) => {
     await axios.patch(`/api/config/configs/${scope}`, config);
+
+    if (scope === FRONTEND_CONFIG_SCOPE && (config as any).autoReload) {
+        // перезагружаем страницу если настройки браузерного интерфейса были изменены и автоматическая перезагрузка включена в новых настройках
+        window.location.reload();
+    }
 }
