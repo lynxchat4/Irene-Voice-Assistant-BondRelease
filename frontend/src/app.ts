@@ -94,7 +94,7 @@ const getProtocolRequirements = ({
 export const initApplication = async () => {
     const config = await loadConfig();
 
-    const { microphoneSampleRate } = config;
+    const { microphoneSampleRate, audioInputEnabled, audioOutputEnabled } = config;
 
     const app = createApp(App);
 
@@ -151,43 +151,47 @@ export const initApplication = async () => {
         ).start()
     );
 
-    app.provide(
-        'audioOutputMachine',
-        interpret(
-            audioOutputMachine.withConfig(
-                {},
-                {
-                    eventBus,
-                },
-            ),
-        ).start()
-    );
+    if (audioOutputEnabled) {
+        app.provide(
+            'audioOutputMachine',
+            interpret(
+                audioOutputMachine.withConfig(
+                    {},
+                    {
+                        eventBus,
+                    },
+                ),
+            ).start()
+        );
+    }
 
-    app.provide(
-        'localRecognizerMachine',
-        interpret(
-            localRecognizerStateMachine.withConfig(
-                {},
-                {
-                    eventBus,
-                    sampleRate: microphoneSampleRate,
-                },
-            ),
-        ).start()
-    );
+    if (audioInputEnabled) {
+        app.provide(
+            'localRecognizerMachine',
+            interpret(
+                localRecognizerStateMachine.withConfig(
+                    {},
+                    {
+                        eventBus,
+                        sampleRate: microphoneSampleRate,
+                    },
+                ),
+            ).start()
+        );
 
-    app.provide(
-        'inputStreamerMachine',
-        interpret(
-            inputStreamingStateMachine.withConfig(
-                {},
-                {
-                    eventBus,
-                    sampleRate: microphoneSampleRate,
-                },
-            ),
-        ).start()
-    );
+        app.provide(
+            'inputStreamerMachine',
+            interpret(
+                inputStreamingStateMachine.withConfig(
+                    {},
+                    {
+                        eventBus,
+                        sampleRate: microphoneSampleRate,
+                    },
+                ),
+            ).start()
+        );
+    }
 
     const router = createRouter({
         history: createWebHashHistory(),

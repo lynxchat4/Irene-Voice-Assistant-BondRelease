@@ -82,7 +82,17 @@ def intercept_processed_stt_messages_everywhere(
     )
 
 
-class _RecognizerWorker(Thread, Muteable):
+class _RecognizerStopException(Exception):
+    pass
+
+
+class _RecognizerWorker(Muteable):
+    """
+    Поток, отвечающий за распознание речи для отдельного соединения.
+
+    TODO: Использовать общий пул потоков для всех соединений вместо одного потока на соединение
+    """
+
     def __init__(
             self,
             connection: Connection,
@@ -91,10 +101,8 @@ class _RecognizerWorker(Thread, Muteable):
             sample_rate: int,
             connection_id: str,
     ):
-        super().__init__(daemon=True, name=f'Speech recognizer for connection {connection_id}')
-
         self._connection = connection
-        self._queue: Queue[Callable[[], bool]] = Queue()
+        self._queue: Queue[Callable[[], None]] = Queue()
         self._buffer: list[bytes] = []
         self._buffer_length: int = 0
         self._recognizer = vosk.KaldiRecognizer(model, sample_rate)
@@ -102,29 +110,33 @@ class _RecognizerWorker(Thread, Muteable):
 
         self._mute_group = mute_group
         self._muted = False
+        self._thread = Thread(
+            target=self._run,
+            daemon=True,
+            name=f'Speech recognizer for connection {connection_id}',
+        )
 
     def mute(self):
         self._muted = True
-        self._queue.put(self._reset_recognizer)
+        self._queue.put(self._cmd_reset_recognizer)
 
     def unmute(self):
         self._muted = False
 
     def stop(self):
         self._need_stop = True
-        self._queue.put(self._stop)
-        self.join()
+        self._queue.put(self._cmd_stop)
+        self._thread.join()
 
-    def _reset_recognizer(self):
+    def _cmd_reset_recognizer(self) -> None:
         self._recognizer.Reset()
-        return True
 
-    def _process_data_chunk(self, chunk):
+    def _cmd_process_data_chunk(self, chunk) -> None:
         if self._muted:
-            return True
+            return
 
         if not self._recognizer.AcceptWaveform(chunk):
-            return True
+            return
 
         recognized = json.loads(self._recognizer.Result())
         text = recognized['text']
@@ -138,23 +150,20 @@ class _RecognizerWorker(Thread, Muteable):
                 _ServerSttMessage(self._connection, text)
             )
 
-        return True
+    def _cmd_stop(self) -> None:
+        raise _RecognizerStopException()
 
-    def _stop(self):
-        return False
-
-    def run(self) -> None:
+    def _run(self) -> None:
         try:
             while not self._need_stop:
-                cb = self._queue.get()
-
-                if not cb():
-                    return
+                self._queue.get()()
+        except _RecognizerStopException:
+            ...
         finally:
             self._need_stop = True
 
     async def process_connection(self, ws: WebSocket):
-        self.start()
+        self._thread.start()
 
         remove_from_mute_group = self._mute_group.add_item(self)
 
@@ -162,7 +171,7 @@ class _RecognizerWorker(Thread, Muteable):
             while not self._need_stop:
                 chunk = await ws.receive_bytes()
 
-                self._queue.put(partial(self._process_data_chunk, chunk))
+                self._queue.put(partial(self._cmd_process_data_chunk, chunk))
         except WebSocketDisconnect:
             _logger.info("Соединение с клиентом разорвано")
         finally:
