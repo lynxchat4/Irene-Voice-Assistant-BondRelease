@@ -151,47 +151,43 @@ export const initApplication = async () => {
         ).start()
     );
 
-    if (audioOutputEnabled) {
-        app.provide(
-            'audioOutputMachine',
-            interpret(
-                audioOutputMachine.withConfig(
-                    {},
-                    {
-                        eventBus,
-                    },
-                ),
-            ).start()
-        );
-    }
+    app.provide(
+        'audioOutputMachine',
+        interpret(
+            audioOutputMachine.withConfig(
+                {},
+                {
+                    eventBus,
+                },
+            ),
+        ).start()
+    );
 
-    if (audioInputEnabled) {
-        app.provide(
-            'localRecognizerMachine',
-            interpret(
-                localRecognizerStateMachine.withConfig(
-                    {},
-                    {
-                        eventBus,
-                        sampleRate: microphoneSampleRate,
-                    },
-                ),
-            ).start()
-        );
+    app.provide(
+        'localRecognizerMachine',
+        interpret(
+            localRecognizerStateMachine.withConfig(
+                {},
+                {
+                    eventBus,
+                    sampleRate: microphoneSampleRate,
+                },
+            ),
+        ).start()
+    );
 
-        app.provide(
-            'inputStreamerMachine',
-            interpret(
-                inputStreamingStateMachine.withConfig(
-                    {},
-                    {
-                        eventBus,
-                        sampleRate: microphoneSampleRate,
-                    },
-                ),
-            ).start()
-        );
-    }
+    app.provide(
+        'inputStreamerMachine',
+        interpret(
+            inputStreamingStateMachine.withConfig(
+                {},
+                {
+                    eventBus,
+                    sampleRate: microphoneSampleRate,
+                },
+            ),
+        ).start()
+    );
 
     const router = createRouter({
         history: createWebHashHistory(),
