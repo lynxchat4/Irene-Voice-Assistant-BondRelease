@@ -1,0 +1,18 @@
+#pragma once
+
+#include <HardwareSerial.h>
+
+#define LOGGING_PORT Serial
+
+#define WIFI_SSID "iot_test_ap"
+#define WIFI_PASS "080430a8f3c5"
+
+#define SERVER_HOSTNAME "192.168.99.248"
+#define SERVER_PORT 8086
+
+#define WEBSOCKET_RECONNECT_INTERVAL 1000
+
+#define OUT_I2S_DOUT  22
+#define OUT_I2S_BCLK  26
+#define OUT_I2S_LRC   25
+
