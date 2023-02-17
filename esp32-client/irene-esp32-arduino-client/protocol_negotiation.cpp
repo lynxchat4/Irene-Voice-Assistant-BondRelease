@@ -11,7 +11,7 @@ auto NEGOTIATION_REQUEST_MESSAGE = F(
   /* Ввод аудио для распознания на сервере */
   ",[\"in.stt.serverside\"]"
   /* Отключение микрофона по команде с сервера */
-  ",[\"in.mute/mute\"]"
+  ",[\"in.mute\"]"
   "]}");
 
 NegotiatingProtocolsState::NegotiatingProtocolsState(

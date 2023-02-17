@@ -6,11 +6,13 @@
 #include "state.h"
 
 namespace websockets {
-class WebSocketsClient;
+class WebsocketsClient;
 struct WebsocketsMessage;
 };
 
 using ConnectedStateFactory = std::function<StatePtr(StatePtr reconnectState)>;
+
+std::shared_ptr<websockets::WebsocketsClient> makeWebsocketetClient();
 
 class WebsocketConnectingState : public State {
 private:

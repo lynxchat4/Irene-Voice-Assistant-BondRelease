@@ -6,41 +6,76 @@
 #include "config.h"
 #include "state.h"
 #include "wifi_connection.h"
+#include "websocket_connection.h"
+#include "protocol_negotiation.h"
+#include "audio_playback.h"
 
-class PlayerState: public State {
-private:
-  std::unique_ptr<Audio> audio;
-public:
-  virtual void enter() {
-    State::enter();
+// class PlayerState: public State {
+// private:
+//   std::unique_ptr<Audio> audio;
+// public:
+//   virtual void enter() {
+//     State::enter();
 
-    audio.reset(new Audio());
+//     audio.reset(new Audio());
 
-    audio->setPinout(OUT_I2S_BCLK, OUT_I2S_LRC, OUT_I2S_DOUT);
-    audio->setVolume(10);
-    audio->connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3");
-  }
+//     audio->setPinout(OUT_I2S_BCLK, OUT_I2S_LRC, OUT_I2S_DOUT);
+//     audio->setVolume(10);
+//     audio->connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3");
+//   }
 
-  virtual void leave() {
-    State::leave();
+//   virtual void leave() {
+//     State::leave();
 
-    audio.reset(nullptr);
-  }
+//     audio.reset(nullptr);
+//   }
 
-  virtual std::shared_ptr<State> loop() {
-    audio->loop();
+//   virtual std::shared_ptr<State> loop() {
+//     audio->loop();
 
-    return shared_from_this();
-  }
+//     return shared_from_this();
+//   }
 
-  virtual size_t printTo(Print& print) const {
-    return print.print("playing");
+//   virtual size_t printTo(Print& print) const {
+//     return print.print("playing");
+//   };
+// };
+
+StateVec makeMainStates(std::shared_ptr<websockets::WebsocketsClient> wsClient) {
+  return {
+    std::make_shared<AudioPlaybackReadyState>(wsClient)
   };
-};
+}
+
+StatePtr makeProtocolNegotiationState(std::shared_ptr<websockets::WebsocketsClient> wsClient) {
+	return std::make_shared<NegotiatingProtocolsState>(
+		wsClient,
+		[=]() -> StateVec {
+			return makeMainStates(wsClient);
+		}
+	);
+}
 
 StateVec makeWiFiConnectedStates() {
+  std::shared_ptr<websockets::WebsocketsClient> controlConnectioClient = makeWebsocketetClient();
+
   return {
-    std::make_shared<PlayerState>()
+    //std::make_shared<PlayerState>()
+    std::make_shared<WebsocketConnectingState>(
+      controlConnectioClient,
+      "/api/face_web/ws",
+      [=](StatePtr reconnectState) -> StatePtr {
+        return std::make_shared<WebSocketControlConnectionConnectedState>(
+          reconnectState,
+          controlConnectioClient,
+          [=]() -> StateVec {
+            return {
+              makeProtocolNegotiationState(controlConnectioClient)
+            };
+          }
+        );
+      }
+    )
   };
 }
 

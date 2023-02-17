@@ -3,7 +3,7 @@
 #include "state.h"
 
 namespace websockets {
-class WebSocketsClient;
+class WebsocketsClient;
 struct WebsocketsMessage;
 };
 

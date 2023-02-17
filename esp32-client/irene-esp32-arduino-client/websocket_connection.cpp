@@ -1,3 +1,4 @@
+#include "esp32-hal.h"
 #include <memory>
 #include "state.h"
 #include <ArduinoWebsockets.h>
@@ -8,6 +9,10 @@
 
 #include "websocket_connection.h"
 
+std::shared_ptr<websockets::WebsocketsClient> makeWebsocketetClient() {
+  return std::make_shared<websockets::WebsocketsClient>();  
+}
+
 WebsocketConnectingState::WebsocketConnectingState(
   std::shared_ptr<websockets::WebsocketsClient> wsClient,
   String path,
@@ -17,6 +22,8 @@ WebsocketConnectingState::WebsocketConnectingState(
     connectedStateFactory(connectedStateFactory){};
 
 void WebsocketConnectingState::enter() {
+  State::enter();
+
   wsClient->close();
 }
 
@@ -63,6 +70,8 @@ StatePtr WebSocketConnectedState::loop() {
 
   if (!wsClient->available()) {
     log_println("Lost connection to websocket");
+
+    delay(WEBSOCKET_RECONNECT_INTERVAL_AFTER_DISCONNECT);
 
     return reconnectState;
   }
