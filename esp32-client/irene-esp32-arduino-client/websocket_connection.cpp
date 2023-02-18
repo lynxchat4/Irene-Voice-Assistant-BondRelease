@@ -9,7 +9,7 @@
 
 #include "websocket_connection.h"
 
-std::shared_ptr<websockets::WebsocketsClient> makeWebsocketetClient() {
+std::shared_ptr<websockets::WebsocketsClient> makeWebsocketClient() {
   return std::make_shared<websockets::WebsocketsClient>();  
 }
 

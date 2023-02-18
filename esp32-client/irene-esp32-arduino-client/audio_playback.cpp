@@ -77,6 +77,8 @@ void AudioPlaybackProgressState::enter() {
 void AudioPlaybackProgressState::leave() {
   State::leave();
 
+  wsClient->send(makePlaybackEndMessage(playbackId));
+
   audio.reset(nullptr);
 }
 

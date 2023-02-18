@@ -12,7 +12,7 @@ struct WebsocketsMessage;
 
 using ConnectedStateFactory = std::function<StatePtr(StatePtr reconnectState)>;
 
-std::shared_ptr<websockets::WebsocketsClient> makeWebsocketetClient();
+std::shared_ptr<websockets::WebsocketsClient> makeWebsocketClient();
 
 class WebsocketConnectingState : public State {
 private:

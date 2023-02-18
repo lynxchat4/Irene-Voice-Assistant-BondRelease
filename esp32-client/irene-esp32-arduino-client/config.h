@@ -18,3 +18,5 @@
 #define OUT_I2S_DOUT  22
 #define OUT_I2S_BCLK  26
 #define OUT_I2S_LRC   25
+
+#define IN_SAMPLE_RATE 44000
