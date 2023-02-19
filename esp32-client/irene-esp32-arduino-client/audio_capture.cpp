@@ -1,3 +1,4 @@
+#include "hal/i2s_types.h"
 #include <memory>
 
 #include <driver/i2s.h>
@@ -72,16 +73,53 @@ AudioCapturing::AudioCapturing(CaptureContextPtr captureContext)
 
 void AudioCapturing::enter() {
   State::enter();
-  // TODO:: Setup driver, prepare buffers, etc
+
+  sendBuffer.resize(IN_SEND_BUFFER_SIZE * 2);
+  sendBufferFilled = 0;
+
+  i2s_config_t conf = {
+    .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
+    .sample_rate = IN_SAMPLE_RATE,
+    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+    .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+    .intr_alloc_flags = 0,
+    .dma_buf_count = IN_DMA_BUFFER_COUNT,
+    .dma_buf_len = IN_DMA_BUFFER_SIZE,
+    .use_apll = false,
+  };
+
+  i2s_driver_install(IN_I2S_PORT, &conf, 0, nullptr);
+
+  i2s_pin_config_t pin_conf = {
+    .mck_io_num = I2S_PIN_NO_CHANGE,
+    .bck_io_num = IN_I2S_BCLK,
+    .ws_io_num = IN_I2S_LRC,
+    .data_out_num = I2S_PIN_NO_CHANGE,
+    .data_in_num = IN_I2S_DIN,
+  };
+
+  i2s_set_pin(IN_I2S_PORT, &pin_conf);
 };
 
 void AudioCapturing::leave() {
   State::leave();
-  // TODO:: Shutdown driver, free buffers, etc
+
+  i2s_driver_uninstall(IN_I2S_PORT);
 };
 
 StatePtr AudioCapturing::loop() {
-  // TODO:: Get data from I2S, send it to websocket
+  size_t bytesRead = 0;
+
+  i2s_read(IN_I2S_PORT, &sendBuffer[sendBufferFilled], sendBuffer.size() - sendBufferFilled, &bytesRead, 0);
+
+  sendBufferFilled += bytesRead;
+
+  if (sendBufferFilled >= sendBuffer.size()) {
+    captureContext->getWsClient()->sendBinary((const char*)&sendBuffer[0], sendBuffer.size());
+
+    sendBufferFilled = 0;
+  }
 
   return shared_from_this();
 };

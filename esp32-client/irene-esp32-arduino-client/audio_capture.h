@@ -90,6 +90,8 @@ public:
 class AudioCapturing : public State {
 private:
   CaptureContextPtr captureContext;
+  std::vector<uint8_t> sendBuffer;
+  size_t sendBufferFilled;
 public:
   AudioCapturing(CaptureContextPtr captureContext);
 

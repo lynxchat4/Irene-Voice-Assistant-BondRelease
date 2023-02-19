@@ -66,7 +66,7 @@ AudioPlaybackProgressState::AudioPlaybackProgressState(
 void AudioPlaybackProgressState::enter() {
   State::enter();
 
-  audio.reset(new Audio());
+  audio.reset(new Audio(false, 3, OUT_I2S_PORT));
 
   audio->setPinout(OUT_I2S_BCLK, OUT_I2S_LRC, OUT_I2S_DOUT);
   audio->setVolume(PLAYBACK_VOLUME);
