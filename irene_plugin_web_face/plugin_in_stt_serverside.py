@@ -1,10 +1,13 @@
+import datetime
 import json
+import pathlib
 import uuid
+from argparse import ArgumentParser
 from functools import partial
 from logging import getLogger
 from queue import Queue
 from threading import Thread
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 
 import vosk
 from fastapi import APIRouter, Query, HTTPException
@@ -16,6 +19,7 @@ from irene.brain.inbound_messages import PlainTextMessage
 from irene.face.abc import MuteGroup, Muteable
 from irene.face.mute_group import NULL_MUTE_GROUP
 from irene.plugin_loader.abc import PluginManager
+from irene.plugin_loader.file_patterns import first_substitution
 from irene.plugin_loader.magic_plugin import operation, after, before, step_name
 from irene.plugin_loader.run_operation import call_all_as_wrappers
 from irene_plugin_web_face.abc import Connection, ProtocolHandler
@@ -52,6 +56,35 @@ class _InterceptionContext(BaseContextWrapper):
             orig.notify_processed(message.get_text())
 
         return super().handle_command(va, message)
+
+
+_dump_path_template: Optional[str] = None
+
+
+def setup_cli_arguments(ap: ArgumentParser, *_args, **_kwargs):
+    ap.add_argument(
+        '--dump-server-stt-input',
+        metavar='<шаблон пути>',
+        help="Сохраняет полученные через веб-интерфейс аудио-данные в файл.",
+        type=str,
+        dest='serverside_stt_dump_path_template',
+        default=None,
+    )
+
+
+def receive_cli_arguments(args: Any, *_args, **_kwargs):
+    global _dump_path_template
+
+    if (path_template := args.serverside_stt_dump_path_template) is None:
+        return
+
+    try:
+        first_substitution(path_template, override_vars=dict(connection_id='test', timestamp='42'))
+    except Exception:
+        _logger.exception(
+            "Шаблон, переданный через параметр --dump-server-stt-input не корректен и будет проигнорирован")
+    else:
+        _dump_path_template = path_template
 
 
 @operation('create_root_context')
@@ -116,6 +149,9 @@ class _RecognizerWorker(Muteable):
             name=f'Speech recognizer for connection {connection_id}',
         )
 
+        self._connection_id = connection_id
+        self._dump_file = None
+
     def mute(self):
         self._muted = True
         self._queue.put(self._cmd_reset_recognizer)
@@ -135,6 +171,10 @@ class _RecognizerWorker(Muteable):
         if self._muted:
             return
 
+        if self._dump_file:
+            self._dump_file.write(chunk)
+            self._dump_file.flush()
+
         if not self._recognizer.AcceptWaveform(chunk):
             return
 
@@ -153,7 +193,30 @@ class _RecognizerWorker(Muteable):
     def _cmd_stop(self) -> None:
         raise _RecognizerStopException()
 
+    def _open_dump_file(self):
+        if (tpl := _dump_path_template) is None:
+            return
+
+        timestamp = str(int(datetime.datetime.utcnow().timestamp()))
+        path = first_substitution(
+            tpl,
+            override_vars=dict(connection_id=self._connection_id, timestamp=timestamp)
+        )
+
+        pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+        self._dump_file = open(path, 'wb')
+
+    def _close_dump_file(self):
+        if (file := self._dump_file) is None:
+            return
+
+        self._dump_file = None
+        file.close()
+
     def _run(self) -> None:
+        self._open_dump_file()
+
         try:
             while not self._need_stop:
                 self._queue.get()()
@@ -161,6 +224,8 @@ class _RecognizerWorker(Muteable):
             ...
         finally:
             self._need_stop = True
+
+            self._close_dump_file()
 
     async def process_connection(self, ws: WebSocket):
         self._thread.start()
