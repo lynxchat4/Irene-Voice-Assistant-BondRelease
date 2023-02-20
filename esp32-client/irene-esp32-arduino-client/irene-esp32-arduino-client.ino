@@ -31,7 +31,6 @@ StateVec makeWiFiConnectedStates() {
   std::shared_ptr<websockets::WebsocketsClient> controlConnectioClient = makeWebsocketClient();
 
   return {
-    //std::make_shared<PlayerState>()
     std::make_shared<WebsocketConnectingState>(
       controlConnectioClient,
       "/api/face_web/ws",
@@ -55,6 +54,8 @@ StateManager rootState(std::make_shared<WiFiConnectingState>(makeWiFiConnectedSt
 void setup() {
   Serial.begin(921600);
   Serial.println("\n\nStarting...");
+
+  audioPlaybackInit();
 
   rootState->enter();
 }

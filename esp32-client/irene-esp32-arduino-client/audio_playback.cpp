@@ -1,3 +1,4 @@
+#include "esp32-hal-gpio.h"
 #include "logging.h"
 #include "config.h"
 #include <memory>
@@ -7,6 +8,24 @@
 #include <Audio.h>
 
 #include "audio_playback.h"
+
+void audio_info(const char* info) {
+  log_print("audio_info: ");
+  log_println(info);
+}
+
+/*
+Изначально я хотел создавать объект Audio только в состоянии AudioPlaybackProgressState, чтобы он не занимал место в памяти когда не нужен.
+Однако, MAX98357A ведёт себя нестабильно если интерфейс I2S включать и выключать - иногда воспроизведение работает нормально, иногда начинается с щелчком,
+иногда вообще не происходит (предположительно, MAX98357A переходит в рехим TDM) при том, что все сигналы I2S на месте. Передёргивание сигнала SD_MODE не помогает.
+Библиотека Audio не позволяет отделить инициализацию I2S от создания объекта Audio, так что объект пришлось сделать глобальным.
+ */
+static Audio audio = Audio(false, 3, OUT_I2S_PORT);
+
+void audioPlaybackInit() {
+  audio.setPinout(OUT_I2S_BCLK, OUT_I2S_LRC, OUT_I2S_DOUT);
+  audio.setVolume(PLAYBACK_VOLUME);
+};
 
 AudioPlaybackReadyState::AudioPlaybackReadyState(std::shared_ptr<websockets::WebsocketsClient> wsClient)
   : wsClient(wsClient){};
@@ -66,12 +85,7 @@ AudioPlaybackProgressState::AudioPlaybackProgressState(
 void AudioPlaybackProgressState::enter() {
   State::enter();
 
-  audio.reset(new Audio(false, 3, OUT_I2S_PORT));
-
-  audio->setPinout(OUT_I2S_BCLK, OUT_I2S_LRC, OUT_I2S_DOUT);
-  audio->setVolume(PLAYBACK_VOLUME);
-
-  audio->connecttohost(url.c_str());
+  audio.connecttohost(url.c_str());
 }
 
 void AudioPlaybackProgressState::leave() {
@@ -79,18 +93,19 @@ void AudioPlaybackProgressState::leave() {
 
   wsClient->send(makePlaybackEndMessage(playbackId));
 
-  audio.reset(nullptr);
+  audio.stopSong();
 }
 
 StatePtr AudioPlaybackProgressState::loop() {
   if (notificationInterval.tick(1000)) {
     wsClient->send(playbackNotificationMessage);
-    log_format("sent ping message for playback %s\n", playbackId.c_str());    
+    log_format("sent ping message for playback %s\n", playbackId.c_str());
   }
 
-  audio->loop();
+  audio.loop();
 
-  if (!audio->isRunning()) {
+  // TODO: Похоже, иногда isRunning() возвращает некорректное значение и устройство зависает в этом состоянии.
+  if (!audio.isRunning()) {
     return std::make_shared<AudioPlaybackReadyState>(wsClient);
   }
 

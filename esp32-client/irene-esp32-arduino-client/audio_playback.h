@@ -10,6 +10,8 @@ class WebsocketsClient;
 struct WebsocketsMessage;
 };
 
+void audioPlaybackInit();
+
 class AudioPlaybackReadyState : public State {
 private:
   std::shared_ptr<websockets::WebsocketsClient> wsClient;
@@ -26,7 +28,6 @@ class Audio;
 class AudioPlaybackProgressState : public State {
 private:
   std::shared_ptr<websockets::WebsocketsClient> wsClient;
-  std::unique_ptr<Audio> audio;
   String playbackId;
   String playbackNotificationMessage;
   String url;

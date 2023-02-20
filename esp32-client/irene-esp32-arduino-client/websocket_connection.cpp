@@ -63,6 +63,8 @@ void WebSocketConnectedState::enter() {
       shared_this->onMessage(std::move(msg));
     }
   });
+
+  wsClient->ping();
 }
 
 StatePtr WebSocketConnectedState::loop() {
