@@ -48,13 +48,13 @@ const processMuteRequests = ({ onReceived, mediaStream }: { onReceived: Receiver
 
 export const run = async ({
     modelUrl = '/api/expose_vosk_model/model.zip',
-    sampleRate = 48000,
+    sampleRate,
     onRecognized,
     onPartialRecognized,
     onReceived = () => {},
 }: {
     modelUrl?: string,
-    sampleRate?: number,
+    sampleRate: number,
     onPartialRecognized?: (text: string) => void,
     onRecognized: (text: string) => void,
     onReceived: Receiver<AnyEventObject>,

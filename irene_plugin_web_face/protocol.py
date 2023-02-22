@@ -1,6 +1,8 @@
 """
-Модуль содержит константы, связанные с базовым протоколом работы ассистента в клиент-серверном режиме а так же с
+Модуль содержит константы, связанные с базовым протоколом работы ассистента в клиент-серверном режиме, а так же с
 дополнительными протоколами, реализация которых входит в этот пакет.
+
+См. описание протоколов в https://github.com/AlexeyBond/Irene-Voice-Assistant/blob/master/doc/client-server-protocol.md
 """
 
 MESSAGE_TYPE_KEY = 'type'
@@ -31,3 +33,9 @@ MT_IN_CLIENT_SIDE_STT_PROCESSED = f'{PROTOCOL_IN_CLIENT_SIDE_STT}/processed'
 PROTOCOL_IN_MUTE = 'in.mute'
 MT_PROTOCOL_IN_MUTE_MUTE = f'{PROTOCOL_IN_MUTE}/mute'
 MT_PROTOCOL_IN_MUTE_UNMUTE = f'{PROTOCOL_IN_MUTE}/unmute'
+
+PROTOCOL_IN_SERVER_SIDE_STT = 'in.stt.serverside'
+MT_IN_SERVER_SIDE_STT_READY = f'{PROTOCOL_IN_SERVER_SIDE_STT}/ready'
+MT_IN_SERVER_SIDE_STT_RECOGNIZED = f'{PROTOCOL_IN_SERVER_SIDE_STT}/recognized'
+MT_IN_SERVER_SIDE_STT_PROCESSED = f'{PROTOCOL_IN_SERVER_SIDE_STT}/processed'
+IN_SERVER_SIDE_STT_DEFAULT_SAMPLE_RATE = 44100
