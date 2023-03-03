@@ -46,9 +46,11 @@ const websocketService = (): InvokeCallback<any, AnyEventObject> => (callback, o
     };
 };
 
+export type ProtocolRequirements = (string | null)[][];
+
 export type Context = {
     eventBus: EventBus,
-    protocols: (string | null)[][],
+    protocols: ProtocolRequirements,
 }
 
 export const connectionStateMachine = createMachine<Context>(
