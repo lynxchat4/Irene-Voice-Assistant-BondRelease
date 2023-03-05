@@ -123,7 +123,5 @@ def init_client_protocol(
 def terminate(*_args, **_kwargs):
     global _ttss
     with _tts_mx:
-        if (ttss := _ttss) is not None:
+        if _ttss is not None:
             _ttss = None
-            for tts in ttss:
-                tts.terminate()

@@ -5,7 +5,7 @@ from inspect import isclass
 from logging import getLogger
 from os.path import isfile, basename, splitext
 from types import ModuleType
-from typing import Optional
+from typing import Optional, Any
 
 from irene.plugin_loader.abc import PluginManager, Plugin, OperationStep
 from irene.plugin_loader.errors import PluginExcludedException
@@ -20,7 +20,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
 
     _logger = getLogger('discover_plugins')
 
-    config = {
+    config: dict[str, Any] = {
         'pluginPaths': [
             "{irene_path}/embedded_plugins/plugin_*.py",
             "{python_path}/irene_plugin_*/plugin_*.py",

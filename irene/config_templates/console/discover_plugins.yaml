@@ -7,7 +7,12 @@ excludePlugins:
   - 'plugin_web_face_frontend'
   - 'plugin_web_server'
   - 'plugin_web_face'
+  - 'plugin_local_speech_face'
 pluginPaths:
   - '{irene_path}/embedded_plugins/plugin_*.py'
-  - '{user_home}/irene-plugins/plugin_*.py'
   - '{python_path}/irene_plugin_*/plugin_*.py'
+  - '{irene_home}/plugins/plugin_*.py'
+  - '{irene_home}/plugins/*/plugin_*.py'
+appendPythonPath:
+  - '{irene_home}/plugins'
+  - '{irene_home}/deps'
