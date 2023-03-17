@@ -153,11 +153,12 @@ class _OriginalPlugin(MagicPlugin):
 
         return nxt(prev, config, *args, **kwargs)
 
-    def create_local_output(self, nxt, prev, pm: PluginManager, settings: dict[str, Any], *args, **kwargs):
+    def create_local_outputs(self, nxt, prev: list[AudioOutputChannel], pm: PluginManager, settings: dict[str, Any],
+                             *args, **kwargs):
         requested_type = settings.get('type')
 
         if requested_type in self._audio_output_types:
-            prev = prev or self._audio_output_types[requested_type](kwargs.get('mute_group', NULL_MUTE_GROUP))
+            prev.append(self._audio_output_types[requested_type](kwargs.get('mute_group', NULL_MUTE_GROUP)))
 
         return nxt(prev, pm, settings, *args, **kwargs)
 

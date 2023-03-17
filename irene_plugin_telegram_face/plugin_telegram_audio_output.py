@@ -18,7 +18,7 @@ class TelegramAudioOutputPlugin(MagicPlugin):
     Обеспечивает отправку аудио-файлов и текста, озвученного через TTS в Telegram.
     """
     name = 'telegram_output_audio'
-    version = '0.1.0'
+    version = '0.2.0'
 
     _logger = getLogger(name)
 
@@ -26,22 +26,21 @@ class TelegramAudioOutputPlugin(MagicPlugin):
     Настройки отправки аудио в Telegram.
     
     Доступные параметры:
-    - `tts`             - параметры TTS (озвучения выводимого текста)
-    - `replyInPrivate`  - слать сообщения как ответы в приватных чатах
-    - `replyInGroups`   - слать сообщения как ответы в групповых чатах
-    - `trySendVoice`    - пытаться отправлять аудио как голосовые сообщения.
-                          Это может не получиться если не доступен конвертер аудио-файлов или файлы не удаётся
-                          преобразовывать в формат OGG.
-                          Когда звуки не отправляются как голосовые сообщения, они отправляются как аудио-записи.
+    - `replyInPrivate`        - слать сообщения как ответы в приватных чатах
+    - `replyInGroups`         - слать сообщения как ответы в групповых чатах
+    - `trySendVoice`          - пытаться отправлять аудио как голосовые сообщения.
+                                Это может не получиться если не доступен конвертер аудио-файлов или файлы не удаётся
+                                преобразовывать в формат OGG.
+                                Когда звуки не отправляются как голосовые сообщения, они отправляются как аудио-записи.
+    - `voiceProfileSelector`  - селектор, определяющий, какие голоса будут использоваться при озвучении текстовых
+                                сообщений.
     """
 
     config = {
-        'tts': {
-            'type': 'silero_v3',
-        },
         'replyInPrivate': False,
         'replyInGroups': True,
         'trySendVoice': True,
+        'voiceProfileSelector': {},
     }
 
     @staticmethod
@@ -80,20 +79,19 @@ class TelegramAudioOutputPlugin(MagicPlugin):
         if send_reply:
             audio_channel = AudioReplyChannel(message, audio_channel)
 
-        if (tts_config := self.config['tts']) is not None:
-            tts = call_all_as_wrappers(
-                pm.get_operation_sequence('create_file_tts'),
-                None,
-                tts_config,
-                pm,
-            )
+        ttss = call_all_as_wrappers(
+            pm.get_operation_sequence('get_file_writing_tts_engines'),
+            [],
+            pm,
+            selector=self.config['voiceProfileSelector'],
+        )
 
-            if tts is None:
-                self._logger.warning("Не удалось создать TTS")
-            else:
-                immediate_tts = FilePlaybackTTS(tts, audio_channel)
+        if len(ttss) == 0:
+            self._logger.info("Не удалось получить ни одного TTS")
 
-                channels.append(ImmediatePlaybackTTSOutput(immediate_tts))
+        for tts in ttss:
+            immediate_tts = FilePlaybackTTS(tts, audio_channel)
+            channels.append(ImmediatePlaybackTTSOutput(immediate_tts))
 
         channels.append(audio_channel)
 

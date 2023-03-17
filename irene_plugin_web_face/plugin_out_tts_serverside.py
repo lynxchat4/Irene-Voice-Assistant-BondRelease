@@ -1,7 +1,6 @@
-import threading
 from collections import Callable
 from logging import getLogger
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Any
 
 from irene.brain.abc import AudioOutputChannel, OutputChannelNotFoundError
 from irene.face.abc import FileWritingTTS
@@ -11,32 +10,14 @@ from irene.plugin_loader.run_operation import call_all_as_wrappers
 from irene_plugin_web_face.abc import Connection, ProtocolHandler
 from irene_plugin_web_face.protocol import PROTOCOL_OUT_SERVER_SIDE_TTS
 
-_logger = getLogger('serverside-tts')
-
 name = 'plugin_out_tts_serverside'
-version = '0.2.0'
+version = '0.3.0'
 
-config = {
-    'ttss': [
-        {
-            'type': 'silero_v3',
-            'model_selector': {
-                'gender.female': True,
-                'locale.ru': True,
-            },
-        },
-        {
-            'type': 'silero_v3',
-            'model_selector': {
-                'gender.female': True,
-                'locale.ru': True,
-            },
-        },
-    ],
+_logger = getLogger(name)
+
+config: dict[str, Any] = {
+    'profile_selector': {},
 }
-
-_tts_mx = threading.Lock()
-_ttss: Optional[list[FileWritingTTS]] = None
 
 
 class _NonFatalError(Exception):
@@ -44,34 +25,20 @@ class _NonFatalError(Exception):
 
 
 def _init_ttss(pm: PluginManager) -> list[FileWritingTTS]:
-    global _ttss
-    if (ttss := _ttss) is not None:
-        return ttss
+    ttss = call_all_as_wrappers(
+        pm.get_operation_sequence('get_file_writing_tts_engines'),
+        [],
+        pm,
+        selector=config['profile_selector'],
+    )
 
-    with _tts_mx:
-        if (ttss := _ttss) is not None:
-            return ttss
+    if len(ttss) == 0:
+        raise _NonFatalError(
+            "Не удалось получить ни один TTS. Проверьте настройки профилей TTS (voice_profiles) и селектор "
+            "(profile_selector) в настройках плагина plugin_out_tts_serverside."
+        )
 
-        ttss = []
-
-        for tts_settings in config['ttss']:
-            tts = call_all_as_wrappers(
-                pm.get_operation_sequence('create_file_tts'),
-                None,
-                tts_settings,
-                pm,
-            )
-
-            if tts is not None:
-                ttss.append(tts)
-            else:
-                _logger.warning("Не удалось создать TTS с настройками: %s", tts_settings)
-
-        if len(ttss) > 0:
-            _ttss = ttss
-            return _ttss
-
-        raise _NonFatalError("Не удалось создать ни один TTS.")
+    return ttss
 
 
 class _ServersideTTSOutput(ProtocolHandler):
@@ -118,10 +85,3 @@ def init_client_protocol(
             _logger.warning(f"Не удалось настроить серверный TTS: {e}")
 
     return nxt(prev, proto_name, connection, pm, *args, **kwargs)
-
-
-def terminate(*_args, **_kwargs):
-    global _ttss
-    with _tts_mx:
-        if _ttss is not None:
-            _ttss = None

@@ -17,7 +17,7 @@ class LocalSpeechFacePlugin(MagicPlugin):
     """
 
     name = 'face_local'
-    version = '0.1.0'
+    version = '0.2.0'
 
     _logger = getLogger(name)
 
@@ -47,13 +47,8 @@ class LocalSpeechFacePlugin(MagicPlugin):
                 'type': 'sounddevice',
             },
             {
-                'type': 'tts-file',
-                'tts': {
-                    'type': 'silero_v3',
-                },
-                'player': {
-                    'type': 'sounddevice',
-                },
+                'type': 'tts',
+                'profile_selector': {},
             },
         ],
         'muteGroup': {},
@@ -106,19 +101,19 @@ class LocalSpeechFacePlugin(MagicPlugin):
         outputs = []
 
         for output_config in output_configs:
-            output = call_all_as_wrappers(
-                pm.get_operation_sequence('create_local_output'),
-                None,
+            new_outputs = call_all_as_wrappers(
+                pm.get_operation_sequence('create_local_outputs'),
+                [],
                 pm,
                 output_config,
                 mute_group=mute_group,
             )
 
-            if output is None:
+            if len(new_outputs) == 0:
                 self._logger.error("Не удалось создать канал вывода из настроек %s", output_config)
                 continue
 
-            outputs.append(output)
+            outputs.extend(new_outputs)
 
         if len(outputs) == 0:
             self._logger.error("Не удалось инициализировать ни один из каналов вывода")

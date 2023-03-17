@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional, Callable, Any
+from typing import Callable, Any
 
 import sounddevice
 import soundfile
@@ -69,9 +69,9 @@ class _SoundDeviceAudioOutput(AudioOutputChannel):
                     sounddevice.sleep(sleepMs)
 
 
-def create_local_output(
+def create_local_outputs(
         nxt: Callable,
-        prev: Optional[OutputChannel],
+        prev: list[OutputChannel],
         pm: PluginManager,
         settings: dict[str, Any],
         *args,
@@ -79,7 +79,7 @@ def create_local_output(
 ):
     if settings.get('type') == 'sounddevice':
         try:
-            prev = prev if prev is not None else _SoundDeviceAudioOutput().check()
+            prev.append(_SoundDeviceAudioOutput().check())
         except sounddevice.PortAudioError as e:
             _logger.error("Не удалось инициализировать portaudio: %s", e)
 

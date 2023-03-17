@@ -16,6 +16,9 @@ version = '0.1.0'
 _logger = getLogger(name)
 
 config_comment = """
+Настройки голосов, которыми может говорить голосовой ассистент.
+
+TODO: document
 """
 
 config: dict[str, Any] = {
@@ -25,12 +28,18 @@ config: dict[str, Any] = {
     "voiceProfiles": {
         "silero_v3_ru_f": {
             "enabled": True,
-            "type": 'silero_v3',
-            "silero_settings": {
-                "speaker": "xenia",
-                "sample_rate": 24000,
-                "put_accent": True,
-                "put_yo": True,
+            "priority": -1000,
+            "tts_settings": {
+                "type": 'silero_v3',
+                "silero_settings": {
+                    "speaker": "xenia",
+                    "sample_rate": 24000,
+                    "put_accent": True,
+                    "put_yo": True,
+                },
+                "warmup_iterations": 4,
+                "warmup_phrase": "В недрах тундры выдры в гетрах тырят в вёдра ядра кедров",
+                "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
             },
             "metadata": {
                 "locale": "ru",
@@ -38,21 +47,24 @@ config: dict[str, Any] = {
                 "gender": "female",
                 "gender.female": True,
             },
-            "warmup_iterations": 4,
-            "warmup_phrase": "В недрах тундры выдры в гетрах тырят в вёдра ядра кедров",
-            "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
             "localPlayer": {
                 "type": "sounddevice"
             },
         },
         "silero_v3_ru_m": {
             "enabled": False,
-            "type": "silero_v3",
-            "silero_settings": {
-                "speaker": "eugene",
-                "sample_rate": 24000,
-                "put_accent": True,
-                "put_yo": True,
+            "priority": -1000,
+            "tts_settings": {
+                "type": 'silero_v3',
+                "silero_settings": {
+                    "speaker": "eugene",
+                    "sample_rate": 24000,
+                    "put_accent": True,
+                    "put_yo": True,
+                },
+                "warmup_iterations": 4,
+                "warmup_phrase": "В недрах тундры выдры в гетрах тырят в вёдра ядра кедров",
+                "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
             },
             "metadata": {
                 "locale": "ru",
@@ -60,16 +72,19 @@ config: dict[str, Any] = {
                 "gender": "male",
                 "gender.male": True,
             },
-            "warmup_iterations": 4,
-            "warmup_phrase": "В недрах тундры выдры в гетрах тырят в вёдра ядра кедров",
-            "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
         },
         "silero_v3_en_f": {
             "enabled": False,
-            "type": "silero_v3",
-            "silero_settings": {
-                "speaker": "en_0",
-                "sample_rate": 24000,
+            "tts_settings": {
+                "type": 'silero_v3',
+                "silero_settings": {
+                    "speaker": "en_0",
+                    "sample_rate": 24000,
+                },
+                "warmup_iterations": 4,
+                "warmup_phrase": "Can you can a canned can into an un-canned can like a canner can can a canned can into "
+                                 "an un-canned can?",
+                "model_url": "https://models.silero.ai/models/tts/en/v3_en.pt",
             },
             "metadata": {
                 "locale": "en",
@@ -77,17 +92,19 @@ config: dict[str, Any] = {
                 "gender": "female",
                 "gender.female": True,
             },
-            "warmup_iterations": 4,
-            "warmup_phrase": "Can you can a canned can into an un-canned can like a canner can can a canned can into "
-                             "an un-canned can?",
-            "model_url": "https://models.silero.ai/models/tts/en/v3_en.pt",
         },
         "silero_v3_en_m": {
             "enabled": False,
-            "type": "silero_v3",
-            "silero_settings": {
-                "speaker": "en_1",
-                "sample_rate": 24000,
+            "tts_settings": {
+                "type": 'silero_v3',
+                "silero_settings": {
+                    "speaker": "en_1",
+                    "sample_rate": 24000,
+                },
+                "warmup_iterations": 4,
+                "warmup_phrase": "Can you can a canned can into an un-canned can like a canner can can a canned can into "
+                                 "an un-canned can?",
+                "model_url": "https://models.silero.ai/models/tts/en/v3_en.pt",
             },
             "metadata": {
                 "locale": "en",
@@ -95,10 +112,6 @@ config: dict[str, Any] = {
                 "gender": "male",
                 "gender.male": True,
             },
-            "warmup_iterations": 4,
-            "warmup_phrase": "Can you can a canned can into an un-canned can like a canner can can a canned can into "
-                             "an un-canned can?",
-            "model_url": "https://models.silero.ai/models/tts/en/v3_en.pt",
         },
     },
 }
@@ -125,7 +138,7 @@ class _TTSProxy(TTS, Generic[_TTSBaseClass]):
 
     @property
     def meta(self):
-        return {**self._meta_source, **self._current_impl.meta}
+        return {**self._meta_source.meta, **self._current_impl.meta}
 
 
 class _FileWritingTTSProxy(_TTSProxy[FileWritingTTS], FileWritingTTS):
@@ -179,13 +192,17 @@ class _VoiceProfile(Metadata):
     def meta(self) -> Mapping[str, Any]:
         return self._settings.get('metadata', {})
 
+    @property
+    def priority(self):
+        return self._settings.get('priority', 0)
+
     def _create_file_writing_tts(self) -> FileWritingTTS:
         assert self._pm is not None
 
         tts: Optional[FileWritingTTS] = call_all_as_wrappers(
             self._pm.get_operation_sequence('create_file_tts'),
             None,
-            self._settings,
+            self._settings.get('tts_settings', {}),
             self._pm,
         )
 
@@ -200,7 +217,7 @@ class _VoiceProfile(Metadata):
         tts: Optional[ImmediatePlaybackTTS] = call_all_as_wrappers(
             self._pm.get_operation_sequence('create_immediate_tts'),
             None,
-            self._settings,
+            self._settings.get('tts_settings', {}),
             self._pm,
         )
 
@@ -209,17 +226,19 @@ class _VoiceProfile(Metadata):
 
             player_settings: dict[str, Any] = self._settings.get('localPlayer', config['defaultLocalPlayer'])
 
-            player = call_all_as_wrappers(
-                self._pm.get_operation_sequence('create_local_output'),
-                None,
+            players = call_all_as_wrappers(
+                self._pm.get_operation_sequence('create_local_outputs'),
+                [],
                 self._pm,
                 player_settings,
             )
 
-            if not isinstance(player, AudioOutputChannel):
+            filtered_players = list(filter(AudioOutputChannel.__instancecheck__, players))
+
+            if len(filtered_players) == 0:
                 raise _TTSCreationFailure(f"Не удалось создать канал вывода звука для профиля {self._id}")
 
-            tts = FilePlaybackTTS(file_tts, player)
+            tts = FilePlaybackTTS(file_tts, filtered_players[0])
 
         return tts
 
@@ -265,14 +284,17 @@ def receive_config(config: dict[str, Any], *_args, **_kwargs):
 
 
 def _get_matching_profiles(
-        selector: Optional[dict[str, Any]],
+        selector: Optional[dict[str, Any]] = None,
 ) -> Iterable[_VoiceProfile]:
     profile_matcher: Predicate[_VoiceProfile] = Predicate.true()
 
     if selector is not None:
         profile_matcher = profile_matcher | MetaMatcher(selector)
 
-    return (profile for profile in _profiles.values() if profile_matcher(profile))
+    return sorted(
+        (profile for profile in _profiles.values() if profile_matcher(profile)),
+        key=lambda it: it.priority
+    )
 
 
 @step_name('get_from_profiles')

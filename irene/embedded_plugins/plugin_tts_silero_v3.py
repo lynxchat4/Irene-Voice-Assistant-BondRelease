@@ -16,80 +16,11 @@ from irene.face.abc import FileWritingTTS, TTSResultFile
 from irene.face.tts_helpers import create_disposable_tts_result_file
 from irene.plugin_loader.file_patterns import pick_random_file, first_substitution
 from irene.plugin_loader.utils.snapshot_hash import snapshot_hash
-from irene.utils.mapping_match import mapping_match
 
 name = 'plugin_tts_silero_v3'
-version = '0.2.0'
+version = '0.3.0'
 
 config: dict[str, Any] = {
-    "voices": [
-        {
-            "silero_settings": {
-                "speaker": "xenia",
-                "sample_rate": 24000,
-                "put_accent": True,
-                "put_yo": True,
-            },
-            "metadata": {
-                "locale": "ru",
-                "locale.ru": True,
-                "gender": "female",
-                "gender.female": True,
-            },
-            "warmup_iterations": 4,
-            "warmup_phrase": "В недрах тундры выдры в гетрах тырят в вёдра ядра кедров",
-            "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
-        },
-        {
-            "silero_settings": {
-                "speaker": "eugene",
-                "sample_rate": 24000,
-                "put_accent": True,
-                "put_yo": True,
-            },
-            "metadata": {
-                "locale": "ru",
-                "locale.ru": True,
-                "gender": "male",
-                "gender.male": True,
-            },
-            "warmup_iterations": 4,
-            "warmup_phrase": "В недрах тундры выдры в гетрах тырят в вёдра ядра кедров",
-            "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
-        },
-        {
-            "silero_settings": {
-                "speaker": "en_0",
-                "sample_rate": 24000,
-            },
-            "metadata": {
-                "locale": "en",
-                "locale.en": True,
-                "gender": "female",
-                "gender.female": True,
-            },
-            "warmup_iterations": 4,
-            "warmup_phrase": "Can you can a canned can into an un-canned can like a canner can can a canned can into "
-                             "an un-canned can?",
-            "model_url": "https://models.silero.ai/models/tts/en/v3_en.pt",
-        },
-        {
-            "silero_settings": {
-                "speaker": "en_1",
-                "sample_rate": 24000,
-            },
-            "metadata": {
-                "locale": "en",
-                "locale.en": True,
-                "gender": "male",
-                "gender.male": True,
-            },
-            "warmup_iterations": 4,
-            "warmup_phrase": "Can you can a canned can into an un-canned can like a canner can can a canned can into "
-                             "an un-canned can?",
-            "model_url": "https://models.silero.ai/models/tts/en/v3_en.pt",
-        },
-    ],
     "threads": 4,
     "model_storage_path": "{irene_home}/silero_v3/models/{file_name}",
     "model_search_paths": ["{irene_home}/silero_v3/models/{file_name}"],
@@ -107,65 +38,6 @@ config_comment = """
                                 Дополнительные пути могут быть добавлены если сборка приложения (например, Docker-образ)
                                 содержит неизменяемые предварительно загруженные файлы моделей.
 - ``threads``                 - количество потоков, используемых для синтеза речи.
-- ``voices``                  - список шаблонов голосов.
-
-Параметры шаблона голоса:
-
-- ``model_url``               - URL файла модели.
-                                Как правило, URL файла из этого списка: https://models.silero.ai/models/tts/.
-- ``silero_settings``         - объект с параметрами, передаваемыми в функцию синтеза речи.
-                                Как правило, содержит поля ``speaker`` - имя голоса и ``sample_rate`` - частота
-                                дискретизации синтезированного звука.
-                                Может содержать дополнительные параметры, в зависимости от модели.
-- ``metadata``                - Объект с метаданными голоса.
-                                Используется при выборе шаблона голоса и затем при выборе канала вывода.
-                                Как правило, содержит язык модели и гендер голоса.
-                                Можно добавлять дополнительные метки, на своё усмотрение.
-- ``warmup_iterations``       - Количество запросов, отправляемых для разогрева модели.
-                                Silero может очень медленно обрабатывать первые несколько запросов, так что чтобы
-                                уменьшить задержки при реальной работе с пользователем, несколько запросов отправляются
-                                в процессе инициализации модели.
-                                Если приложение стартует слишком медленно, то можно уменьшить количество запросов
-                                (пожертвовав задержками при работе приложения), если задержки при первых запросах ещё
-                                остаются, а время запуска не критично, то можно наоборот увеличить количество запросов.
-- ``warmup_phrase``           - Фраза, используемая для разогрева TTS.
-                                Нужна фраза, на языке, поддерживаемом моделью.
-
-Использование этого TTS в других плагинах (например в ``plugin_out_tts_serverside`` для вывода речи через веб-интерфейс,
-в ``face_local`` для воспроизведения речи локально или в ``telegram_output_audio`` для озвучения голосовых сообщений в
-Telegram) настраивается примерно следующим образом:
-
-```yaml
-tts:
-  # Указываем, что нужно использовать TTS Silero
-  type: "silero_v3"
-  voice_selector:
-    # Выбираем первый русскоязычный шаблон женского голоса
-    locale.ru: true
-    gender.female: true
-  silero_settings:
-    # Можно изменить некоторые настройки
-    sample_rate: 48000
-  metadata:
-    # Или добавить дополнительные метаданные
-    some_label: true
-```
-
-или можно определить новый голос, не используя шаблон:
-
-```yaml
-tts:
-  type: "silero_v3"
-  voice:
-    model_url: https://models.silero.ai/models/tts/de/v3_de.pt
-    silero_settings:
-      sample_rate: 24000
-    warmup_iterations: 4
-    warmup_phrase: "Fischers Fritze fischt frische Fische, Frische Fische fischt Fischers Fritze."
-    metadata:
-      locale: de
-      locale.de: true
-```
 """
 
 _logger = getLogger(name)
@@ -237,32 +109,12 @@ def _warmup_model(model, voice_settings: dict[str, Any]):
 
         _logger.info("Разогрев закончен.")
 
-
-def _pick_voice_settings(instance_config: dict[str, Any]) -> Optional[dict[str, Any]]:
-    if (settings := instance_config.get('voice')) is not None:
-        return settings
-
-    for voice_config in config['voices']:
-        if mapping_match(voice_config.get('metadata', {}), instance_config.get('voice_selector', {})):
-            return voice_config
-
-    return None
-
-
 def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
-    voice_settings = _pick_voice_settings(instance_config)
-
-    if voice_settings is None:
-        return None
-
-    model_url = voice_settings['model_url']
+    model_url = instance_config['model_url']
 
     model = _load_model(_download_model_file(model_url))
 
-    full_settings = {
-        **voice_settings['silero_settings'],
-        **instance_config.get('silero_settings', {})
-    }
+    full_settings = instance_config.get('silero_settings', {})
 
     _warmup_model(model, full_settings)
 
@@ -285,8 +137,7 @@ def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
         def meta(self) -> Mapping[str, Any]:
             return {
                 'silero.speaker': full_settings.get('speaker'),
-                **voice_settings.get('metadata', {}),
-                **instance_config.get('metadata', {})
+                **instance_config.get('metadata', {}),
             }
 
     return SileroV3TTS()
