@@ -42,9 +42,7 @@ config: dict[str, Any] = {
                 "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
             },
             "metadata": {
-                "locale": "ru",
-                "locale.ru": True,
-                "gender": "female",
+                "language.ru": True,
                 "gender.female": True,
             },
             "localPlayer": {
@@ -67,9 +65,7 @@ config: dict[str, Any] = {
                 "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
             },
             "metadata": {
-                "locale": "ru",
-                "locale.ru": True,
-                "gender": "male",
+                "language.ru": True,
                 "gender.male": True,
             },
         },
@@ -87,9 +83,7 @@ config: dict[str, Any] = {
                 "model_url": "https://models.silero.ai/models/tts/en/v3_en.pt",
             },
             "metadata": {
-                "locale": "en",
-                "locale.en": True,
-                "gender": "female",
+                "language.en": True,
                 "gender.female": True,
             },
         },
@@ -107,9 +101,7 @@ config: dict[str, Any] = {
                 "model_url": "https://models.silero.ai/models/tts/en/v3_en.pt",
             },
             "metadata": {
-                "locale": "en",
-                "locale.en": True,
-                "gender": "male",
+                "language.en": True,
                 "gender.male": True,
             },
         },

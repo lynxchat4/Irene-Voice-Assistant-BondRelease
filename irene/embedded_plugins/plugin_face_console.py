@@ -1,9 +1,10 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Mapping, Any
 
 from irene.brain.abc import TextOutputChannel, VAContext, VAApi, InboundMessage
 from irene.brain.contexts import BaseContextWrapper
 from irene.brain.inbound_messages import PlainTextMessage
 from irene.brain.output_pool import OutputPoolImpl
+from irene.constants.labels import pure_text_channel_labels
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin, before, operation, after
 from irene.plugin_loader.run_operation import call_all_as_wrappers
@@ -15,6 +16,10 @@ class ConsoleOutputChannel(TextOutputChannel):
 
     def send(self, text: str, **kwargs):
         print(self.prefix + text)
+
+    @property
+    def meta(self) -> Mapping[str, Any]:
+        return pure_text_channel_labels()
 
 
 class ConsoleMessage(PlainTextMessage):

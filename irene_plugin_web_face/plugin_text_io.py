@@ -4,6 +4,7 @@ from typing import Callable, Optional, Any, Mapping
 from irene.brain.abc import TextOutputChannel, InboundMessage, OutputChannelPool, VAContext, VAApi
 from irene.brain.contexts import BaseContextWrapper
 from irene.brain.inbound_messages import PlainTextMessage
+from irene.constants.labels import pure_text_channel_labels
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import operation, before, after
 from irene_plugin_web_face.abc import Connection, ProtocolHandler
@@ -14,14 +15,7 @@ name = 'remote_text_protocols'
 version = '0.1.0'
 
 config = {
-    "output_metadata": {
-        "gender": "any",
-        "locale": "any",
-        "gender.female": True,
-        "gender.male": True,
-        "locale.ru": True,
-        "locale.en": True,
-    },
+    "output_metadata": pure_text_channel_labels(),
 }
 
 

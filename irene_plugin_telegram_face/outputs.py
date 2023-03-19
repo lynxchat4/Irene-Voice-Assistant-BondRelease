@@ -4,6 +4,7 @@ from telebot import TeleBot
 from telebot.types import Chat, Message
 
 from irene.brain.abc import TextOutputChannel, AudioOutputChannel
+from irene.constants.labels import pure_text_channel_labels
 from irene.utils.audio_converter import AudioConverter, ConversionError
 
 
@@ -44,6 +45,10 @@ class ChatTextChannel(TextOutputChannel):
             self._chat.id,
             **_args_to_send_message(text, **kwargs),
         )
+
+    @property
+    def meta(self):
+        return pure_text_channel_labels()
 
 
 class ReplyTextChannel(ChatTextChannel):
@@ -94,6 +99,10 @@ class BroadcastTextChannel(TextOutputChannel):
 
         if not sent:
             raise Exception("Не удалось отправить сообщение ни в один чат")
+
+    @property
+    def meta(self):
+        return pure_text_channel_labels()
 
 
 class AudioChannel(AudioOutputChannel):
