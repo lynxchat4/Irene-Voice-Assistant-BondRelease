@@ -20,6 +20,11 @@ from irene_plugin_web_face.protocol import MESSAGE_TYPE_KEY, MT_NEGOTIATE_REQUES
 
 
 class _ConnectionImpl(Connection):
+    __slots__ = (
+        '_websocket', '_message_handlers', '_event_loop', '_outputs_pool', '_queue', '_message_processor', '_thread',
+        '_protocols'
+    )
+
     _logger = getLogger('ws-api')
 
     def __init__(self, ws: WebSocket):

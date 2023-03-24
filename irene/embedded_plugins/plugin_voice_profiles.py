@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Any, Mapping, Optional, Generic, TypeVar, Iterable
+from typing import Any, Optional, Generic, TypeVar, Iterable
 
 from irene.brain.abc import AudioOutputChannel
 from irene.face.abc import FileWritingTTS, TTS, TTSResultFile, ImmediatePlaybackTTS
@@ -7,7 +7,7 @@ from irene.face.tts_helpers import FilePlaybackTTS
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import step_name
 from irene.plugin_loader.run_operation import call_all_as_wrappers
-from irene.utils.metadata import Metadata, MetaMatcher
+from irene.utils.metadata import Metadata, MetaMatcher, MetadataMapping
 from irene.utils.predicate import Predicate
 
 name = 'voice_profiles'
@@ -181,7 +181,7 @@ class _VoiceProfile(Metadata):
                 _logger.exception(f"Не удалось пересоздать TTS для профиля {self._id} после изменения настроек")
 
     @property
-    def meta(self) -> Mapping[str, Any]:
+    def meta(self) -> MetadataMapping:
         return self._settings.get('metadata', {})
 
     @property

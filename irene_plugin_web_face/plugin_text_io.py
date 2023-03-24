@@ -1,29 +1,25 @@
 from functools import partial
-from typing import Callable, Optional, Any, Mapping
+from typing import Callable, Optional
 
-from irene.brain.abc import TextOutputChannel, InboundMessage, OutputChannelPool, VAContext, VAApi
-from irene.brain.contexts import BaseContextWrapper
+from irene.brain.abc import TextOutputChannel
 from irene.brain.inbound_messages import PlainTextMessage
 from irene.constants.labels import pure_text_channel_labels
 from irene.plugin_loader.abc import PluginManager
-from irene.plugin_loader.magic_plugin import operation, before, after
+from irene.utils.metadata import MetadataMapping
 from irene_plugin_web_face.abc import Connection, ProtocolHandler
 from irene_plugin_web_face.protocol import MT_OUT_TEXT_PLAIN_TEXT, PROTOCOL_OUT_TEXT_PLAIN, MT_IN_TEXT_DIRECT_TEXT, \
     PROTOCOL_IN_TEXT_DIRECT, PROTOCOL_IN_TEXT_INDIRECT, MT_IN_TEXT_INDIRECT_TEXT
 
 name = 'remote_text_protocols'
-version = '0.1.0'
+version = '0.2.0'
 
 config = {
     "output_metadata": pure_text_channel_labels(),
 }
 
 
-class _DirectTextMessage(PlainTextMessage):
-    pass
-
-
 class _TextOutputImpl(TextOutputChannel, ProtocolHandler):
+    __slots__ = '_connection'
     proto_name = PROTOCOL_OUT_TEXT_PLAIN
 
     def __init__(self, connection: Connection):
@@ -40,28 +36,34 @@ class _TextOutputImpl(TextOutputChannel, ProtocolHandler):
         pass
 
     @property
-    def meta(self) -> Mapping[str, Any]:
+    def meta(self) -> MetadataMapping:
         return config['output_metadata']
 
 
 class _TextInputImpl(ProtocolHandler):
+    __slots__ = ('proto_name', '_message_meta', '_connection')
+
     def __init__(
             self,
             connection: Connection,
             *,
             message_type: str,
-            message_class: Callable[[str, OutputChannelPool], InboundMessage],
+            message_meta: Optional[MetadataMapping],
             proto_name: str,
     ):
         self.proto_name = proto_name
-        self._message_class = message_class
+        self._message_meta = message_meta
         self._connection = connection
 
         self._connection.register_message_type(message_type, self._handle_client_message)
 
     def _handle_client_message(self, payload: dict):
         self._connection.receive_inbound_message(
-            self._message_class(payload.get('text', ''), self._connection.get_associated_outputs())
+            PlainTextMessage(
+                payload.get('text', ''),
+                self._connection.get_associated_outputs(),
+                self._message_meta,
+            )
         )
 
     def start(self):
@@ -76,39 +78,16 @@ _protocols: dict[str, Callable[[Connection], ProtocolHandler]] = {
     PROTOCOL_IN_TEXT_DIRECT: partial(
         _TextInputImpl,
         message_type=MT_IN_TEXT_DIRECT_TEXT,
-        message_class=_DirectTextMessage,
+        message_meta={'is_direct': True},
         proto_name=PROTOCOL_IN_TEXT_DIRECT,
     ),
     PROTOCOL_IN_TEXT_INDIRECT: partial(
         _TextInputImpl,
         message_type=MT_IN_TEXT_INDIRECT_TEXT,
-        message_class=PlainTextMessage,
+        message_meta=None,
         proto_name=PROTOCOL_IN_TEXT_INDIRECT,
     ),
 }
-
-
-@operation('create_root_context')
-@before('add_trigger_phrase')
-@after('load_commands')
-def skip_trigger_phrase(
-        nxt: Callable,
-        prev: Optional[VAContext],
-        *args, **kwargs,
-):
-    if prev is None:
-        raise ValueError()
-
-    class TriggerPhraseSkipContext(BaseContextWrapper):
-        def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
-            if isinstance(message.get_original(), _DirectTextMessage):
-                return prev.handle_command(va, message)
-
-            return super().handle_command(va, message)
-
-    return TriggerPhraseSkipContext(
-        nxt(prev, *args, **kwargs)
-    )
 
 
 def init_client_protocol(

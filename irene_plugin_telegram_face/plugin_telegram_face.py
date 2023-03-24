@@ -1,17 +1,15 @@
 from logging import getLogger
-from typing import Optional, Any, Callable, Iterable
+from typing import Optional, Any, Iterable
 
 import telebot.apihelper as apihelper
 from telebot import TeleBot
 from telebot.types import Message
 
-from irene.brain.abc import Brain, OutputChannel, VAContext, VAApi, InboundMessage
-from irene.brain.contexts import BaseContextWrapper
+from irene.brain.abc import Brain, OutputChannel
 from irene.brain.output_pool import OutputPoolImpl
 from irene.plugin_loader.abc import PluginManager
-from irene.plugin_loader.magic_plugin import MagicPlugin, operation, before, after
+from irene.plugin_loader.magic_plugin import MagicPlugin
 from irene.plugin_loader.run_operation import call_all_as_wrappers, call_all
-from irene_plugin_telegram_face.inbound_messages import TelegramMessage
 
 apihelper.ENABLE_MIDDLEWARE = True
 
@@ -126,31 +124,6 @@ class TelegramFacePlugin(MagicPlugin):
                 raise Exception(
                     f"Получено сообщение из неавторизованного чата {message.chat.id} ({message.chat.username})"
                 )
-
-    @operation('create_root_context')
-    @before('add_trigger_phrase')
-    @after('load_commands')
-    def skip_trigger_phrase(
-            self,
-            nxt: Callable,
-            prev: Optional[VAContext],
-            *args, **kwargs,
-    ):
-        if prev is None:
-            raise ValueError()
-
-        class TriggerPhraseSkipContext(BaseContextWrapper):
-            def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
-                original_message = message.get_original()
-
-                if isinstance(original_message, TelegramMessage) and original_message.is_direct():
-                    return prev.handle_command(va, message)
-
-                return super().handle_command(va, message)
-
-        return TriggerPhraseSkipContext(
-            nxt(prev, *args, **kwargs)
-        )
 
     def run(self, pm: PluginManager, *_args, **_kwargs):
         token: Optional[str] = self.config['token']

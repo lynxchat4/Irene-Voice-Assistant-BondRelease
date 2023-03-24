@@ -2,11 +2,12 @@ import os
 import uuid
 from os.path import join
 from tempfile import gettempdir
-from typing import Optional, Callable, Any, Mapping
+from typing import Optional, Callable, Any
 
-from irene.brain.abc import AudioOutputChannel, SpeechOutputChannel
+from irene.brain.abc import AudioOutputChannel, TextOutputChannel
 from irene.face.abc import ImmediatePlaybackTTS, FileWritingTTS, TTSResultFile, MuteGroup
 from irene.face.mute_group import NULL_MUTE_GROUP
+from irene.utils.metadata import MetadataMapping
 
 
 class DisposableTTSResultFile(TTSResultFile):
@@ -131,11 +132,11 @@ class FilePlaybackTTS(ImmediatePlaybackTTS):
             self._ao.send_file(f.get_full_path(), alt_text=text)
 
     @property
-    def meta(self) -> Mapping[str, Any]:
+    def meta(self) -> MetadataMapping:
         return {**self._tts.meta, **self._ao.meta}
 
 
-class ImmediatePlaybackTTSOutput(SpeechOutputChannel):
+class ImmediatePlaybackTTSOutput(TextOutputChannel):
     """
     Реализация ``SpeechOutputChannel``, делегирующая вывод речи экземпляру TTS-движка (``ImmediatePlaybackTTS``).
     """
@@ -150,5 +151,5 @@ class ImmediatePlaybackTTSOutput(SpeechOutputChannel):
             self._tts.say(text, **kwargs)
 
     @property
-    def meta(self) -> Mapping[str, Any]:
-        return self._tts.meta
+    def meta(self) -> MetadataMapping:
+        return {**self._tts.meta, 'is_speech': True}

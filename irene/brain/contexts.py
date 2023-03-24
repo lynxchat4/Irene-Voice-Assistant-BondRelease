@@ -355,6 +355,9 @@ class TriggerPhraseContext(VAContext):
         self._next_context = next_context
 
     def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
+        if message.meta.get('is_direct', False):
+            return self._next_context.handle_command(va, message)
+
         words = message.get_text().split(' ')
 
         while len(words) > 0:
@@ -362,7 +365,10 @@ class TriggerPhraseContext(VAContext):
                 if words[:len(phrase)] == phrase:
                     rest_text = ' '.join(words[len(phrase):])
 
-                    return self._next_context.handle_command(va, PartialTextMessage(message, rest_text))
+                    return self._next_context.handle_command(
+                        va,
+                        PartialTextMessage(message, rest_text, {'is_direct': True})
+                    )
 
             words = words[1:]
 

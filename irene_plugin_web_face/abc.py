@@ -10,6 +10,8 @@ class Connection(ABC):
     клиентским соединением.
     """
 
+    __slots__ = ()
+
     @abstractmethod
     def register_message_type(self, mt: str, handler: Callable[[dict], None]):
         """
@@ -72,6 +74,8 @@ class ProtocolHandler(ABC):
     Конструктор, как правило, принимает объект соединения (``Connection``) и регистрирует обработчики входящих сообщений
     (``register_message_type``) и каналы вывода (``register_output``).
     """
+
+    __slots__ = ()
 
     proto_name: str
 

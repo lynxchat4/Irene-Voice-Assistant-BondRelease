@@ -5,7 +5,7 @@
 from abc import ABCMeta, abstractmethod, ABC
 from typing import Optional, Union, Callable, Generator, TypeVar, Any, Type, Collection, Tuple, ContextManager, Protocol
 
-from irene.utils.metadata import Metadata
+from irene.utils.metadata import Metadata, MetadataMapping, MetaMatcher
 
 __all__ = [
     'VAApi',
@@ -21,7 +21,6 @@ __all__ = [
     'OutputChannel',
     'OutputChannelNotFoundError',
     'TextOutputChannel',
-    'SpeechOutputChannel',
     'AudioOutputChannel',
     'InboundMessage',
     'Brain',
@@ -34,6 +33,7 @@ class OutputChannel(Metadata, metaclass=ABCMeta):
     """
     Канал, по которому ассистент может направлять ответные сообщения в том или ином виде.
     """
+    __slots__ = ()
 
 
 TChan = TypeVar('TChan', bound=OutputChannel)
@@ -48,6 +48,7 @@ class OutputChannelPool(ABC):
     """
     Набор (пул) каналов вывода.
     """
+    __slots__ = ()
 
     @abstractmethod
     def query_channels(self, predicate: Callable[[OutputChannel], bool]) -> Collection[OutputChannel]:
@@ -90,7 +91,7 @@ class OutputChannelPool(ABC):
         return self.query_channels(type_predicate & predicate)  # type: ignore
 
 
-class InboundMessage(ABC):
+class InboundMessage(Metadata, metaclass=ABCMeta):
     """
     Входящее сообщение от пользователя.
 
@@ -98,6 +99,7 @@ class InboundMessage(ABC):
     голосовую команду (чуть менее очевидно) или некий результат предварительной обработки таковых (возможно, не
     очевидно).
     """
+    __slots__ = ()
 
     @abstractmethod
     def get_text(self) -> str:
@@ -130,6 +132,18 @@ class InboundMessage(ABC):
             исходное сообщение, отправленное пользователем
         """
         return self
+
+    @property
+    def meta(self) -> MetadataMapping:
+        """
+        Метаданные сообщения.
+
+        Может содержать следующие ключи:
+
+        - ``"is_direct"`` - ``True`` если точно известно, что сообщение адресовано напрямую ассистенту
+        - ``"language"`` - код языка сообщения
+        """
+        return super().meta
 
 
 class Brain(metaclass=ABCMeta):
@@ -165,6 +179,8 @@ class VAApi(metaclass=ABCMeta):
     """
     API голосового ассистента, доступный плагинам, добавляющим дополнительные команды/скиллы.
     """
+
+    __slots__ = ()
 
     @abstractmethod
     def get_outputs(self) -> OutputChannelPool:
@@ -249,6 +265,8 @@ class VAApiExt(VAApi, ABC):
         - Добавить настройку времени ожидания следующей команды без переключения контекста
     """
 
+    __slots__ = ()
+
     @abstractmethod
     def context_set(self, ctx: 'VAContextSource', timeout: Optional[float] = None):
         """
@@ -275,7 +293,11 @@ class VAApiExt(VAApi, ABC):
             (через параметр ``related_message`` или неявно).
         """
 
-    def get_outputs_preferring_relevant(self, typ: Type[TChan]) -> Collection[TChan]:
+    def get_outputs_preferring_relevant(
+            self,
+            typ: Type[TChan],
+            predicate: Optional[Callable[[TChan], bool]] = None,
+    ) -> Collection[TChan]:
         """
         Подбирает каналы вывода, соответствующие заданным критериям, предпочитает каналы релевантные последнему
         полученному сообщению.
@@ -283,19 +305,21 @@ class VAApiExt(VAApi, ABC):
         Args:
             typ:
                 необходимый тип канала
+            predicate:
+                дополнительные критерии выбора каналов
         Returns:
             коллекция каналов, соответствующих запросу
         Raises:
             OutputChannelNotFoundError - если подходящих каналов не найдено
         """
         try:
-            return self.get_message().get_related_outputs().get_channels(typ)
+            return self.get_message().get_related_outputs().get_channels(typ, predicate)
         except OutputChannelNotFoundError:
             ...
         except RuntimeError:
             ...
 
-        return self.get_outputs().get_channels(typ)
+        return self.get_outputs().get_channels(typ, predicate)
 
     def say(self, text: str, **kwargs):
         """
@@ -331,10 +355,14 @@ class VAApiExt(VAApi, ABC):
         Raises:
             OutputChannelNotFoundError - если не найден подходящий канал вывода
         """
-        ch: SpeechOutputChannel
+        ch: TextOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
-        ch, *_ch = self.get_outputs_preferring_relevant(SpeechOutputChannel)  # type: ignore
+        # UPD: https://github.com/python/mypy/issues/4717
+        ch, *_ch = self.get_outputs_preferring_relevant(
+            TextOutputChannel,  # type: ignore
+            MetaMatcher({'is_speech': True})
+        )
 
         ch.send(text, **kwargs)
 
@@ -365,6 +393,7 @@ class TextOutputChannel(ABC, OutputChannel):
 
     Например, TTS, консоль или мессенджер.
     """
+    __slots__ = ()
 
     @abstractmethod
     def send(self, text: str, **kwargs):
@@ -384,17 +413,25 @@ class TextOutputChannel(ABC, OutputChannel):
                 Реализации должны игнорировать неизвестные им опции.
         """
 
+    @property
+    def meta(self) -> MetadataMapping:
+        """
+        Метаданные канала.
 
-class SpeechOutputChannel(TextOutputChannel, ABC):
-    """
-    Текстовый канал, выведенный в который текст будет преобразован в речь.
-    """
+        Может содержать следующие ключи:
+
+        - ``"is_speech"`` - ``True`` если канал воспроизводит текст как речь
+        - ``"language.<language-code>"`` - ``True`` если канал поддерживает вывод на языке, соответствующем коду
+            ``<language-code>``.
+        """
+        return super().meta
 
 
 class AudioOutputChannel(ABC, OutputChannel):
     """
     Канал, способный воспроизводить звуковые сигналы/сообщения.
     """
+    __slots__ = ()
 
     @abstractmethod
     def send_file(self, file_path: str, **kwargs):
@@ -416,6 +453,7 @@ class VAContext(metaclass=ABCMeta):
     """
     Контекст диалога, определяет поведение ассистента в некотором состоянии.
     """
+    __slots__ = ()
 
     @abstractmethod
     def handle_command(self, va: VAApi, message: InboundMessage) -> Optional['VAContext']:
@@ -534,6 +572,8 @@ class VAActiveInteraction(metaclass=ABCMeta):
 
     > бла бла бал # продолжение изначального диалога
     """
+
+    __slots__ = ()
 
     @abstractmethod
     def act(self, va: VAApi) -> Optional[VAContext]:

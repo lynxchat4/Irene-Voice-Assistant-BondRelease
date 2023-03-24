@@ -70,6 +70,12 @@ class TriggerPhraseContextTest(unittest.TestCase):
             self.ctx1
         )
 
+    def test_forward_direct_message(self):
+        c = TriggerPhraseContext([["ирина"], ["ирины"], ["ирину"]], self.next_ctx)
+        self.assertIs(
+            c.handle_command(self.va, tm("привет", {'is_direct': True})),
+            self.ctx1
+        )
 
 if __name__ == '__main__':
     unittest.main()

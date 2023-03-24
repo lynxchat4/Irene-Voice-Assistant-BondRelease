@@ -6,7 +6,7 @@ from logging import getLogger
 from typing import Optional
 
 from irene import VAApiExt
-from irene.brain.abc import SpeechOutputChannel, OutputChannelNotFoundError, VAContextSource, TextOutputChannel
+from irene.brain.abc import OutputChannelNotFoundError, VAContextSource, TextOutputChannel
 from irene.brain.canonical_text import convert_to_canonical
 from irene.constants.languages import ALL_LANGUAGES, RUSSIAN, LanguageDefinition
 from irene.plugin_loader.abc import PluginManager
@@ -57,8 +57,8 @@ def _get_output_for_language(va: VAApiExt, language: LanguageDefinition) -> Text
     for label in language.labels:
         try:
             output, *_ = related_outputs.get_channels(
-                SpeechOutputChannel,  # type: ignore
-                MetaMatcher({label: True})
+                TextOutputChannel,  # type: ignore
+                MetaMatcher({label: True, 'is_speech': True})
             )
             return output
         except OutputChannelNotFoundError:

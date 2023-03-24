@@ -7,7 +7,7 @@ from functools import cache
 from hashlib import md5
 from logging import getLogger
 from os.path import basename, dirname
-from typing import Optional, Any, Mapping
+from typing import Optional, Any
 from urllib.parse import urlparse
 
 import torch
@@ -16,6 +16,7 @@ from irene.face.abc import FileWritingTTS, TTSResultFile
 from irene.face.tts_helpers import create_disposable_tts_result_file
 from irene.plugin_loader.file_patterns import pick_random_file, first_substitution
 from irene.plugin_loader.utils.snapshot_hash import snapshot_hash
+from irene.utils.metadata import MetadataMapping
 
 name = 'plugin_tts_silero_v3'
 version = '0.3.0'
@@ -134,7 +135,7 @@ def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
             return str(snapshot_hash(full_settings) ^ hash(model_url))
 
         @property
-        def meta(self) -> Mapping[str, Any]:
+        def meta(self) -> MetadataMapping:
             return {
                 'silero.speaker': full_settings.get('speaker'),
                 **instance_config.get('metadata', {}),

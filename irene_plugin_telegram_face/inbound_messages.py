@@ -16,15 +16,14 @@ class TelegramMessage(PlainTextMessage):
             bot: TeleBot,
             outputs: OutputChannelPool
     ):
-        super().__init__(text, outputs)
+        super().__init__(text, outputs, {'is_direct': is_direct_message(message, bot)})
         self.message = message
         self.bot = bot
 
-    def is_direct(self) -> bool:
-        return is_direct_message(self.message, self.bot)
-
 
 class TelegramTextMessage(TelegramMessage):
+    __slots__ = ()
+
     def __init__(
             self,
             message: Message,
