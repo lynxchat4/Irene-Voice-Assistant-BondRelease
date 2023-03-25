@@ -1,6 +1,6 @@
 import inspect
 from os.path import join, dirname
-from typing import Union, Any
+from typing import Union, Any, Iterable
 
 from irene import VAContext, construct_context
 from irene.brain.command_tree import VACommandTree
@@ -102,11 +102,14 @@ class PluginTestCase(DialogTestCase):
     plugin: Union[str, Plugin]
     configs: dict[str, dict[str, Any]] = {}
 
+    def get_additional_plugins(self) -> Iterable[Plugin]:
+        return ()
+
     def setUp(self) -> None:
         super().setUp()
 
         stub_runtime = _StubRuntime(self.configs)
-        plugins: list[Plugin] = [stub_runtime]
+        plugins: list[Plugin] = [stub_runtime, *self.get_additional_plugins()]
 
         test_case_dir = dirname(inspect.getfile(self.__class__))
 

@@ -388,11 +388,12 @@ def receive_config(config: dict[str, Any], *_args, **_kwargs):
 
 def _get_matching_profiles(
         selector: Optional[dict[str, Any]] = None,
+        **_kwargs,
 ) -> Iterable[_VoiceProfile]:
     profile_matcher: Predicate[_VoiceProfile] = Predicate.true()
 
     if selector is not None:
-        profile_matcher = profile_matcher | MetaMatcher(selector)
+        profile_matcher = profile_matcher & MetaMatcher(selector)
 
     return sorted(
         (profile for profile in _profiles.values() if profile_matcher(profile)),
