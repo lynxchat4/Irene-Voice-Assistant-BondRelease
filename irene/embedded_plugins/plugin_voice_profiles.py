@@ -200,6 +200,22 @@ config: dict[str, Any] = {
                 "gender.male": True,
             },
         },
+        "silero_v3_de_f": {
+            "enabled": False,
+            "tts_settings": {
+                "type": 'silero_v3',
+                "silero_settings": {
+                    "sample_rate": 24000,
+                },
+                "warmup_iterations": 4,
+                "warmup_phrase": "Fischers Fritze fischt frische Fische, Frische Fische fischt Fischers Fritze.",
+                "model_url": "https://models.silero.ai/models/tts/de/v3_de.pt",
+            },
+            "metadata": {
+                "language.de": True,
+                "gender.female": True,
+            },
+        },
     },
 }
 
