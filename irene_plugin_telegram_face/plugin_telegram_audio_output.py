@@ -1,8 +1,8 @@
 from logging import getLogger
-from typing import Optional
+from typing import Optional, TypedDict, Any
 
-from telebot import TeleBot
-from telebot.types import Message
+from telebot import TeleBot  # type: ignore
+from telebot.types import Message  # type: ignore
 
 from irene.brain.abc import OutputChannel, AudioOutputChannel
 from irene.face.tts_helpers import FilePlaybackTTS, ImmediatePlaybackTTSOutput
@@ -36,7 +36,13 @@ class TelegramAudioOutputPlugin(MagicPlugin):
                                 сообщений.
     """
 
-    config = {
+    class _Config(TypedDict):
+        replyInPrivate: bool
+        replyInGroups: bool
+        trySendVoice: bool
+        voiceProfileSelector: dict[str, Any]
+
+    config: _Config = {
         'replyInPrivate': False,
         'replyInGroups': True,
         'trySendVoice': True,
@@ -74,7 +80,7 @@ class TelegramAudioOutputPlugin(MagicPlugin):
         else:
             audio_channel = VoiceChannel(bot, message.chat, converter)
 
-        send_reply = self.config['replyInPrivate' if message.chat.type == 'private' else 'replyInGroups']
+        send_reply = self.config['replyInPrivate'] if message.chat.type == 'private' else self.config['replyInGroups']
 
         if send_reply:
             audio_channel = AudioReplyChannel(message, audio_channel)

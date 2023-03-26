@@ -1,6 +1,6 @@
 from collections import Callable
 from logging import getLogger
-from typing import Optional, Iterable, Any
+from typing import Optional, Iterable, Any, TypedDict
 
 from irene.brain.abc import AudioOutputChannel, OutputChannelNotFoundError
 from irene.face.abc import FileWritingTTS
@@ -15,7 +15,12 @@ version = '0.3.0'
 
 _logger = getLogger(name)
 
-config: dict[str, Any] = {
+
+class _Config(TypedDict):
+    profile_selector: dict[str, Any]
+
+
+config: _Config = {
     'profile_selector': {},
 }
 

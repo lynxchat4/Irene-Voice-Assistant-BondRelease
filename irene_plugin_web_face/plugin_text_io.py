@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Optional
+from typing import Callable, Optional, TypedDict, Any
 
 from irene.brain.abc import TextOutputChannel
 from irene.brain.inbound_messages import PlainTextMessage
@@ -13,7 +13,12 @@ from irene_plugin_web_face.protocol import MT_OUT_TEXT_PLAIN_TEXT, PROTOCOL_OUT_
 name = 'remote_text_protocols'
 version = '0.2.0'
 
-config = {
+
+class _Config(TypedDict):
+    output_metadata: dict[str, Any]
+
+
+config: _Config = {
     "output_metadata": pure_text_channel_labels(),
 }
 

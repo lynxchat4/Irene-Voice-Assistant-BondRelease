@@ -7,7 +7,7 @@ from functools import cache
 from hashlib import md5
 from logging import getLogger
 from os.path import basename, dirname
-from typing import Optional, Any
+from typing import Optional, Any, TypedDict
 from urllib.parse import urlparse
 
 import torch
@@ -21,7 +21,14 @@ from irene.utils.metadata import MetadataMapping
 name = 'plugin_tts_silero_v3'
 version = '0.3.0'
 
-config: dict[str, Any] = {
+
+class _Config(TypedDict):
+    threads: int
+    model_storage_path: str
+    model_search_paths: list[str]
+
+
+config: _Config = {
     "threads": 4,
     "model_storage_path": "{irene_home}/silero_v3/models/{file_name}",
     "model_search_paths": ["{irene_home}/silero_v3/models/{file_name}"],
@@ -109,6 +116,7 @@ def _warmup_model(model, voice_settings: dict[str, Any]):
             os.remove(warmup_file)
 
         _logger.info("Разогрев закончен.")
+
 
 def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
     model_url = instance_config['model_url']

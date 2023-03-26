@@ -4,7 +4,7 @@
 
 import json
 from logging import getLogger
-from typing import Any, Optional
+from typing import Optional, TypedDict
 from urllib.request import urlopen, Request
 
 from irene_plugin_translate.translation_provider import TranslationProvider
@@ -12,7 +12,13 @@ from irene_plugin_translate.translation_provider import TranslationProvider
 name = 'translation_provider_libretranslate'
 version = '0.1.0'
 
-config: dict[str, Any] = {
+
+class _Config(TypedDict):
+    api_url: str
+    api_key: Optional[str]
+
+
+config: _Config = {
     'api_url': 'https://translate.terraprint.co/translate',
     'api_key': None,
 }

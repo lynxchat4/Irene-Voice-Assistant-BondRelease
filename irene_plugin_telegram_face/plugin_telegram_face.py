@@ -1,9 +1,9 @@
 from logging import getLogger
-from typing import Optional, Any, Iterable
+from typing import Optional, Iterable, TypedDict
 
-import telebot.apihelper as apihelper
+import telebot.apihelper as apihelper  # type: ignore
 from telebot import TeleBot
-from telebot.types import Message
+from telebot.types import Message  # type: ignore
 
 from irene.brain.abc import Brain, OutputChannel
 from irene.brain.output_pool import OutputPoolImpl
@@ -56,7 +56,12 @@ class TelegramFacePlugin(MagicPlugin):
     Чтобы добавить ещё один чат, процедуру нужно повторить начиная с создания пароля.
     """
 
-    config: dict[str, Any] = {
+    class _Config(TypedDict):
+        token: Optional[str]
+        authorizedChats: list[int]
+        authorizationSecret: Optional[str]
+
+    config: _Config = {
         "token": None,
         "authorizedChats": [],
         "authorizationSecret": None,
@@ -78,8 +83,7 @@ class TelegramFacePlugin(MagicPlugin):
 
         class AuthorizedChats:
             def __iter__(self):
-                chats: list[int] = me.config['authorizedChats']
-                return iter(chats)
+                return iter(me.config['authorizedChats'])
 
         return AuthorizedChats()
 

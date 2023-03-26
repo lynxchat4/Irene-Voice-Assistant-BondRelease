@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional, Any, Callable
+from typing import Optional, Callable, TypedDict
 
 from irene.brain.abc import OutputChannelPool, Brain
 from irene.brain.inbound_messages import PlainTextMessage
@@ -38,7 +38,12 @@ class LocalSpeechFacePlugin(MagicPlugin):
     - `muteGroup` - См. [ДОКУМЕНТ НЕ СОЗДАН]
     """
 
-    config: dict[str, Any] = {
+    class _Config(TypedDict):
+        input: dict
+        outputs: list[dict]
+        muteGroup: dict
+
+    config: _Config = {
         'input': {
             'type': 'vosk+sounddevice',
         },
@@ -93,7 +98,7 @@ class LocalSpeechFacePlugin(MagicPlugin):
             )
             return
 
-        output_configs: list[dict[str, Any]] = self.config['outputs']
+        output_configs = self.config['outputs']
 
         if len(output_configs) == 0:
             self._logger.error("Не настроен ни один канал вывода")

@@ -15,8 +15,10 @@ from irene.face.tts_helpers import file_writing_tts_from_callbacks, immediate_pl
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin, operation, before
 
+_WavPlayerConstructor = Callable[[MuteGroup], AudioOutputChannel]
 
-def _make_playwav_channel_type(vacore, init, play):
+
+def _make_playwav_channel_type(vacore, init, play) -> _WavPlayerConstructor:
     initialized = False
 
     class _LocalPlaywavChannel(AudioOutputChannel):
@@ -56,7 +58,7 @@ class _OriginalPlugin(MagicPlugin):
 
         self._file_tts_types: dict[str, Type[FileWritingTTS]] = {}
         self._immediate_tts_types: dict[str, Type[ImmediatePlaybackTTS]] = {}
-        self._audio_output_types: dict[str, Type[AudioOutputChannel]] = {}
+        self._audio_output_types: dict[str, _WavPlayerConstructor] = {}
 
         try:
             self._core.config = self._manifest['default_options']
@@ -112,11 +114,20 @@ class _OriginalPlugin(MagicPlugin):
         # Читаем значение (возможно) обновлённое плагином
         self.config = self._core.config
 
-    def _wrap_context_fn(self, fn):
+    def _wrap_context_fn_no_args(self, fn: Callable[[VACore, str], None]) -> Callable[[VAApiExt, str], None]:
         @wraps(fn)
         def wrapper(va: VAApiExt, text: str):
             self._core.va = va
             fn(self._core, text)
+
+        return wrapper
+
+    def _wrap_context_fn_with_args(self, fn: Callable[[VACore, str, Any], None]) \
+            -> Callable[[VAApiExt, str, Any], None]:
+        @wraps(fn)
+        def wrapper(va: VAApiExt, text: str, *args):
+            self._core.va = va
+            fn(self._core, text, *args)
 
         return wrapper
 
@@ -129,12 +140,14 @@ class _OriginalPlugin(MagicPlugin):
             *args, **kwargs
     ):
         if callable(prev) and getattr(prev, '__module__', None) == self._module.__name__:
-            prev = self._wrap_context_fn(prev)
+            prev_cast: Callable[[VACore, str], None] = prev  # type: ignore
+            prev = self._wrap_context_fn_no_args(prev_cast)
         elif isinstance(prev, tuple):
             first, *rest = prev
 
             if callable(first) and getattr(first, '__module__', None) == self._module.__name__:
-                prev = (self._wrap_context_fn(first), *rest)
+                first_cast: Callable[[VACore, str, Any], None] = first  # type: ignore
+                prev = (self._wrap_context_fn_with_args(first_cast), rest[0])
 
         return nxt(prev, *args, **kwargs)
 
@@ -168,7 +181,7 @@ class OriginalCompatibilityPlugin(MagicPlugin):
     Плагин, обеспечивающий совместимость с плагинами для оригинальной Ирины.
     """
     name = 'original_plugin_loader'
-    version = '1.0.0'
+    version = '1.1.0'
 
     config = {
         "mpcIsUse": True,

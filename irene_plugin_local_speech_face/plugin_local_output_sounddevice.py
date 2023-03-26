@@ -1,8 +1,8 @@
 from logging import getLogger
-from typing import Callable, Any
+from typing import Callable, Any, TypedDict, Optional
 
-import sounddevice
-import soundfile
+import sounddevice  # type: ignore
+import soundfile  # type: ignore
 
 from irene.brain.abc import OutputChannel, AudioOutputChannel
 from irene.plugin_loader.abc import PluginManager
@@ -10,7 +10,14 @@ from irene.plugin_loader.abc import PluginManager
 name = 'local_output_sounddevice'
 version = '0.1.0'
 
-config = {
+
+class _Config(TypedDict):
+    deviceId: Optional[int]
+    blockSize: int
+    postPlaySleepMS: int
+
+
+config: _Config = {
     'deviceId': None,
     'blockSize': 1024,
     'postPlaySleepMS': 250,

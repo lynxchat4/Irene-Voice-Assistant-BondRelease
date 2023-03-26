@@ -3,7 +3,7 @@
 """
 
 from logging import getLogger
-from typing import Optional
+from typing import Optional, TypedDict, Any
 
 from irene import VAApiExt
 from irene.brain.abc import OutputChannelNotFoundError, VAContextSource, TextOutputChannel
@@ -17,7 +17,12 @@ from irene_plugin_translate.translation_provider import TranslationProvider
 name = 'skill_translate'
 version = '0.1.0'
 
-config = {
+
+class _Config(TypedDict):
+    provider: dict[str, Any]
+
+
+config: _Config = {
     'provider': {
         'type': 'libretranslate',
     }
