@@ -26,4 +26,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: alexeybond/irene:latest
+          tags: alexeybond/irene:nightly
