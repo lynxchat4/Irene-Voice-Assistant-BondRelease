@@ -77,7 +77,8 @@ class _ClientsideSTTProtocolHandler(ProtocolHandler):
 
     def _handle_recognized_message(self, msg: dict):
         self._connection.receive_inbound_message(
-            _ClientSTTMessage(msg['text'], self._connection.get_associated_outputs(), self._connection)
+            _ClientSTTMessage(
+                msg['text'], self._connection.get_associated_outputs(), self._connection)
         )
 
     def start(self):

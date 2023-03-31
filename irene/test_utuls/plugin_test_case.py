@@ -56,10 +56,12 @@ class _StubRuntime(MagicPlugin):
     def bootstrap(self, pm: PluginManager, *_args, **_kwargs):
         for step in pm.get_operation_sequence('config'):
             if step.plugin.name in self._configs:
-                self._configs[step.plugin.name] = {**step.step, **self._configs[step.plugin.name]}
+                self._configs[step.plugin.name] = {
+                    **step.step, **self._configs[step.plugin.name]}
 
                 if hasattr(step.plugin, 'config'):
-                    setattr(step.plugin, 'config', self._configs[step.plugin.name])
+                    setattr(step.plugin, 'config',
+                            self._configs[step.plugin.name])
 
         for step in pm.get_operation_sequence('receive_config'):
             if step.plugin.name in self._configs:
@@ -68,10 +70,12 @@ class _StubRuntime(MagicPlugin):
     def plugin_discovered(self, _pm: PluginManager, plugin: Plugin, *_args, **_kwargs):
         for step in plugin.get_operation_steps('config'):
             if plugin.name in self._configs:
-                self._configs[step.plugin.name] = {**step.step, **self._configs[step.plugin.name]}
+                self._configs[step.plugin.name] = {
+                    **step.step, **self._configs[step.plugin.name]}
 
                 if hasattr(step.plugin, 'config'):
-                    setattr(step.plugin, 'config', self._configs[step.plugin.name])
+                    setattr(step.plugin, 'config',
+                            self._configs[step.plugin.name])
 
         for step in plugin.get_operation_steps('receive_config'):
             if step.plugin.name in self._configs:
@@ -126,7 +130,8 @@ class PluginTestCase(DialogTestCase):
             }
             plugins.append(PluginDiscoveryPlugin())
         else:
-            raise AssertionError('В качестве плагина для тестирования передано некорректное значение')
+            raise AssertionError(
+                'В качестве плагина для тестирования передано некорректное значение')
 
         pm = PluginManagerImpl(plugins)
         self.pm = pm

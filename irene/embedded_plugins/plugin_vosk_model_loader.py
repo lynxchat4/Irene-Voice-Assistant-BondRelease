@@ -13,7 +13,7 @@ from hashlib import md5
 from logging import getLogger
 from os.path import basename, dirname, isdir, join
 from shutil import rmtree, move
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, TypedDict
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
@@ -24,7 +24,15 @@ version = '1.0.0'
 
 _logger = getLogger(name)
 
-config = {
+
+class _Config(TypedDict):
+    model_origin_url: str
+    model_search_paths: list[str]
+    model_storage_path: str
+    model_cache_size: int
+
+
+config: _Config = {
     "model_origin_url": "https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip",
     "model_search_paths": ["{irene_home}/vosk/models/{file_name}"],
     "model_storage_path": "{irene_home}/vosk/models/{file_name}",
@@ -39,9 +47,11 @@ def _download_model() -> str:
     try:
         return pick_random_file(config['model_search_paths'], override_vars=dict(file_name=file_basename))
     except FileNotFoundError:
-        _logger.info(f"Файл модели '{file_basename}' не найден. Пытаюсь скачать.")
+        _logger.info(
+            f"Файл модели '{file_basename}' не найден. Пытаюсь скачать.")
 
-    target_path = first_substitution(config['model_storage_path'], override_vars=dict(file_name=file_basename))
+    target_path = first_substitution(
+        config['model_storage_path'], override_vars=dict(file_name=file_basename))
     os.makedirs(dirname(target_path), exist_ok=True)
 
     urlretrieve(raw_url, target_path)
@@ -91,7 +101,8 @@ def get_extracted_vosk_model_path(*args, **kwargs) -> Optional[str]:
 
     if isdir(extracted_path):
         if os.stat(extracted_path).st_mtime >= os.stat(archive_path).st_mtime:
-            _logger.debug("Похоже, архив %s уже извлечён в %s", archive_path, extracted_path)
+            _logger.debug("Похоже, архив %s уже извлечён в %s",
+                          archive_path, extracted_path)
             return extracted_path
         else:
             rmtree(extracted_path)
@@ -101,7 +112,8 @@ def get_extracted_vosk_model_path(*args, **kwargs) -> Optional[str]:
             model_entry = _find_model(zip_file.filelist)
 
             if model_entry is None:
-                _logger.error("Не удалось найти модель в архиве %s", archive_path)
+                _logger.error(
+                    "Не удалось найти модель в архиве %s", archive_path)
                 return None
 
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -124,7 +136,7 @@ def _get_model_loader() -> Callable[[str], Optional[Any]]:
     @lru_cache(maxsize=cache_size)
     def _load_vosk_model(path: str):
         try:
-            from vosk import Model
+            from vosk import Model  # type: ignore
         except ImportError:
             _logger.error(
                 "Пакет vosk не установлен"

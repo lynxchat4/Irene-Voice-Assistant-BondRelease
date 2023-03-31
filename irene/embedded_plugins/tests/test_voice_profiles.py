@@ -165,13 +165,19 @@ class VoiceProfilesTest(PluginTestCase):
         # Приоритет у mock2 выше, так что он идёт первым.
         # Сравнивать экземпляры ttss[x] с self.fixture_plugin.file_mockX напрямую нельзя - voice_profiles возвращает
         # прокси
-        self.assertEqual(ttss[0].get_name(), self.fixture_plugin.file_mock2.get_name())
-        self.assertEqual(ttss[0].get_settings_hash(), self.fixture_plugin.file_mock2.get_settings_hash())
-        self.assert_result_from(ttss[0].say_to_file('test'), self.fixture_plugin.file_mock2)
+        self.assertEqual(ttss[0].get_name(),
+                         self.fixture_plugin.file_mock2.get_name())
+        self.assertEqual(ttss[0].get_settings_hash(
+        ), self.fixture_plugin.file_mock2.get_settings_hash())
+        self.assert_result_from(ttss[0].say_to_file(
+            'test'), self.fixture_plugin.file_mock2)
 
-        self.assertEqual(ttss[1].get_name(), self.fixture_plugin.file_mock1.get_name())
-        self.assertEqual(ttss[1].get_settings_hash(), self.fixture_plugin.file_mock1.get_settings_hash())
-        self.assert_result_from(ttss[1].say_to_file('test'), self.fixture_plugin.file_mock1)
+        self.assertEqual(ttss[1].get_name(),
+                         self.fixture_plugin.file_mock1.get_name())
+        self.assertEqual(ttss[1].get_settings_hash(
+        ), self.fixture_plugin.file_mock1.get_settings_hash())
+        self.assert_result_from(ttss[1].say_to_file(
+            'test'), self.fixture_plugin.file_mock1)
 
     def test_file_profile_get_one_by_meta(self):
         ttss: list[FileWritingTTS] = call_all_as_wrappers(
@@ -182,11 +188,13 @@ class VoiceProfilesTest(PluginTestCase):
         )
 
         self.assertEqual(len(ttss), 1)
-        self.assertTrue(mapping_match(ttss[0].meta, {'profile_label': 'mock1', 'name.mock1': True}))
+        self.assertTrue(mapping_match(
+            ttss[0].meta, {'profile_label': 'mock1', 'name.mock1': True}))
 
     def test_immediate_profile(self):
         ttss = call_all_as_wrappers(
-            self.pm.get_operation_sequence('get_immediate_playback_tts_engines'),
+            self.pm.get_operation_sequence(
+                'get_immediate_playback_tts_engines'),
             [],
             self.pm,
             random_named_argument=True,
@@ -196,7 +204,8 @@ class VoiceProfilesTest(PluginTestCase):
 
     def test_one_direct_immediate_profile(self):
         ttss: list[ImmediatePlaybackTTS] = call_all_as_wrappers(
-            self.pm.get_operation_sequence('get_immediate_playback_tts_engines'),
+            self.pm.get_operation_sequence(
+                'get_immediate_playback_tts_engines'),
             [],
             self.pm,
             selector={'profile_label': 'mock2'}
@@ -205,7 +214,8 @@ class VoiceProfilesTest(PluginTestCase):
         self.assertEqual(len(ttss), 1)
         ttss[0].say('Hi', additional_arg='foo')
 
-        self.fixture_plugin.immediate_mock2.say.assert_called_once_with('Hi', additional_arg='foo')
+        self.fixture_plugin.immediate_mock2.say.assert_called_once_with(
+            'Hi', additional_arg='foo')
 
     def test_one_composite_immediate_profile(self):
         """
@@ -214,7 +224,8 @@ class VoiceProfilesTest(PluginTestCase):
         при помощи TTS и сразу воспроизводящий его через этот канал.
         """
         ttss: list[ImmediatePlaybackTTS] = call_all_as_wrappers(
-            self.pm.get_operation_sequence('get_immediate_playback_tts_engines'),
+            self.pm.get_operation_sequence(
+                'get_immediate_playback_tts_engines'),
             [],
             self.pm,
             selector={'profile_label': 'mock1'}

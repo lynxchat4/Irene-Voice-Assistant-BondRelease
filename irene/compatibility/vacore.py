@@ -25,6 +25,12 @@ class VACore:
 
         self.all_num_to_text = all_num_to_text
 
+    def _assert_va_ready(self) -> VAApiExt:
+        if (va := self.va) is None:
+            raise RuntimeError()
+
+        return va
+
     def save_plugin_options(self, modname, options):
         if modname == self._modname:
             self.config = options
@@ -39,13 +45,13 @@ class VACore:
         raise _UnsupportedConfigAccessError()
 
     def say(self, text: str):
-        self.va.say(text)
+        self._assert_va_ready().say(text)
 
     def say2(self, text: str):
-        self.va.say_speech(text)
+        self._assert_va_ready().say_speech(text)
 
     def context_set(self, ctx, timeout=None):
-        self.va.context_set(ctx, timeout)
+        self._assert_va_ready().context_set(ctx, timeout)
 
     def play_voice_assistant_speech(self, text: str):
         return self.say(text)
@@ -57,7 +63,7 @@ class VACore:
             if isfile(p):
                 wavfile = p
 
-        self.va.play_audio(wavfile)
+        self._assert_va_ready().play_audio(wavfile)
 
     mpcHcPath: str
     mpcIsUse: bool

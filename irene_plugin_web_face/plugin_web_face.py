@@ -33,7 +33,8 @@ class _ConnectionImpl(Connection):
         self._event_loop = asyncio.get_running_loop()
         self._outputs_pool = OutputPoolImpl(())
         self._queue: Queue[Callable[[], None]] = Queue()
-        self._message_processor: Optional[Callable[[InboundMessage], None]] = None
+        self._message_processor: Optional[Callable[[
+            InboundMessage], None]] = None
         self._thread: Optional[Thread] = None
         self._protocols: list[ProtocolHandler] = []
 
@@ -54,12 +55,14 @@ class _ConnectionImpl(Connection):
 
     def register_message_type(self, mt: str, handler: Callable[[dict], None]):
         if mt in self._message_handlers:
-            raise ValueError(f"Назначено более одного обработчика для сообщения типа '{mt}'")
+            raise ValueError(
+                f"Назначено более одного обработчика для сообщения типа '{mt}'")
 
         self._message_handlers[mt] = handler
 
     def send_message(self, mt: str, payload: dict):
-        self._event_loop.create_task(self._websocket.send_json({**payload, 'type': mt}))
+        self._event_loop.create_task(
+            self._websocket.send_json({**payload, 'type': mt}))
 
     def on_message_received(self, msg: dict):
         try:
@@ -71,7 +74,8 @@ class _ConnectionImpl(Connection):
         try:
             handler = self._message_handlers[mt]
         except KeyError:
-            self._logger.warning(f"Получено сообщение неизвестного типа: '{mt}'")
+            self._logger.warning(
+                f"Получено сообщение неизвестного типа: '{mt}'")
             return
 
         handler(msg)
@@ -80,7 +84,8 @@ class _ConnectionImpl(Connection):
         msg = await self._websocket.receive_json()
 
         if msg.get('type', None) != MT_NEGOTIATE_REQUEST:
-            raise ValueError("Получено неожиданное сообщение в процессе согласования протоколов")
+            raise ValueError(
+                "Получено неожиданное сообщение в процессе согласования протоколов")
 
         protocols: Collection[str] = msg['protocols']
 
@@ -149,7 +154,8 @@ class _ConnectionImpl(Connection):
                 except InterruptedError:
                     return
                 except Exception:
-                    self._logger.exception("Ошибка при обработке входящего сообщения")
+                    self._logger.exception(
+                        "Ошибка при обработке входящего сообщения")
 
         self._thread = Thread(
             target=_run,
@@ -177,7 +183,8 @@ class _ConnectionImpl(Connection):
 
 class _UnsupportedProtocolsException(Exception):
     def __init__(self, variants: str):
-        super().__init__(f"Ни один из следующих протоколов не поддерживается: {variants}")
+        super().__init__(
+            f"Ни один из следующих протоколов не поддерживается: {variants}")
 
 
 class WebFacePlugin(MagicPlugin):
@@ -192,7 +199,8 @@ class WebFacePlugin(MagicPlugin):
         self._active_connections: set[_ConnectionImpl] = set()
 
     def register_fastapi_endpoints(self, router: APIRouter, pm: PluginManager, *_args, **_kwargs):
-        brain: Brain = call_all_as_wrappers(pm.get_operation_sequence('get_brain'), None, pm)
+        brain: Brain = call_all_as_wrappers(
+            pm.get_operation_sequence('get_brain'), None, pm)
 
         if brain is None:
             raise Exception("Не удалось найти мозг.")
@@ -206,7 +214,8 @@ class WebFacePlugin(MagicPlugin):
             try:
                 await connection.negotiate_protocols(pm)
             except Exception as e:
-                self._logger.error(f"Отказ клиенту {connection.client_address} в подключении: {e}")
+                self._logger.error(
+                    f"Отказ клиенту {connection.client_address} в подключении: {e}")
                 await ws.close(reason=str(e))
                 connection.terminate()
                 return
@@ -220,9 +229,11 @@ class WebFacePlugin(MagicPlugin):
                         im = await ws.receive_json()
                         connection.on_message_received(im)
                 except WebSocketDisconnect:
-                    self._logger.info(f"Соединение с клиентом {connection.client_address} разорвано")
+                    self._logger.info(
+                        f"Соединение с клиентом {connection.client_address} разорвано")
                 except Exception as e:
-                    self._logger.exception(f"Ошибка при обработке сообщений от удалённого клиента")
+                    self._logger.exception(
+                        f"Ошибка при обработке сообщений от удалённого клиента")
                     await ws.close(4500, reason=str(e))
                 finally:
                     self._active_connections.remove(connection)
@@ -234,4 +245,5 @@ class WebFacePlugin(MagicPlugin):
             try:
                 connection.terminate()
             except Exception:
-                self._logger.exception(f"Ошибка при закрытии соединения с клиентом {connection.client_address}")
+                self._logger.exception(
+                    f"Ошибка при закрытии соединения с клиентом {connection.client_address}")

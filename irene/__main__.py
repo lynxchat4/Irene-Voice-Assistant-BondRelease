@@ -9,7 +9,8 @@ from irene.plugin_loader.file_patterns import register_variable, substitute_patt
 from irene.plugin_loader.launcher import launch_application
 
 register_variable('irene_path', dirname(__file__))
-register_variable('irene_home', environ.get('IRENE_HOME', list(substitute_pattern('{user_home}/irene'))))
+register_variable('irene_home', environ.get(
+    'IRENE_HOME', list(substitute_pattern('{user_home}/irene'))))
 
 launch_application(
     [

@@ -49,14 +49,16 @@ class TriggerPhraseContextTest(unittest.TestCase):
         self.next_ctx.handle_command.assert_not_called()
 
     def test_long_phrase(self):
-        c = TriggerPhraseContext([["окей", "ирина", "ивановна"]], self.next_ctx)
+        c = TriggerPhraseContext(
+            [["окей", "ирина", "ивановна"]], self.next_ctx)
         self.assertIs(
             c.handle_command(self.va, tm("окей ирина ивановна привет")),
             self.ctx1
         )
 
     def test_varying_phrase(self):
-        c = TriggerPhraseContext([["ирина"], ["ирины"], ["ирину"]], self.next_ctx)
+        c = TriggerPhraseContext(
+            [["ирина"], ["ирины"], ["ирину"]], self.next_ctx)
         self.assertIs(
             c.handle_command(self.va, tm("ирина привет")),
             self.ctx1
@@ -71,11 +73,13 @@ class TriggerPhraseContextTest(unittest.TestCase):
         )
 
     def test_forward_direct_message(self):
-        c = TriggerPhraseContext([["ирина"], ["ирины"], ["ирину"]], self.next_ctx)
+        c = TriggerPhraseContext(
+            [["ирина"], ["ирины"], ["ирину"]], self.next_ctx)
         self.assertIs(
             c.handle_command(self.va, tm("привет", {'is_direct': True})),
             self.ctx1
         )
+
 
 if __name__ == '__main__':
     unittest.main()

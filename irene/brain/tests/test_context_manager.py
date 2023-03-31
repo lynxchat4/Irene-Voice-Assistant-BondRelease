@@ -24,13 +24,15 @@ class ContextManagerTest(unittest.TestCase):
 
     def test_invoke_default_context(self):
         self.mgr.process_command(tm("привет"))
-        self.default_ctx.handle_command_text.assert_called_once_with(self.va, "привет")
+        self.default_ctx.handle_command_text.assert_called_once_with(
+            self.va, "привет")
 
     def test_switch_from_default_context(self):
         self.mgr.process_command(tm("привет"))
         self.mgr.process_command(tm("пока"))
 
-        self.hi_ctx.handle_command_text.assert_called_once_with(self.va, "пока")
+        self.hi_ctx.handle_command_text.assert_called_once_with(
+            self.va, "пока")
 
     def test_no_timeout_before_time_comes(self):
         self.hi_ctx.timeout = 1.0
@@ -56,7 +58,8 @@ class ContextManagerTest(unittest.TestCase):
 
         self.mgr.process_command(tm("пока"))
 
-        self.hi_to_ctx.handle_command_text.assert_called_once_with(self.va, "пока")
+        self.hi_to_ctx.handle_command_text.assert_called_once_with(
+            self.va, "пока")
 
 
 class TimeoutTickerTest(unittest.TestCase):

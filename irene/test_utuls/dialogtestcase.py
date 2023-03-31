@@ -21,7 +21,8 @@ class _VAApiStub(VAApi):
 
         class TextOutputStub(TextOutputChannel):
             def send(self, text: str, **kwargs):
-                api_stub._output_log = re.sub(r' +', ' ', f'{api_stub._output_log} {text}').strip()
+                api_stub._output_log = re.sub(
+                    r' +', ' ', f'{api_stub._output_log} {text}').strip()
 
         text_out = TextOutputStub()
 
@@ -48,7 +49,8 @@ class _VAApiStub(VAApi):
             related_message: Optional[InboundMessage] = None,
     ):
         if self.ctx_manager is None:
-            raise AssertionError('submit_active_interaction вызван до using_context')
+            raise AssertionError(
+                'submit_active_interaction вызван до using_context')
 
         self.ctx_manager.process_active_interaction(
             construct_active_interaction(
@@ -82,9 +84,11 @@ class DialogTestCase(TestCase):
 
     def say(self, text: str):
         if self.ctx_manager is None:
-            raise AssertionError(f'метод say("{text}") вызван до using_context()')
+            raise AssertionError(
+                f'метод say("{text}") вызван до using_context()')
 
-        self.ctx_manager.process_command(PlainTextMessage(text, self.va.get_outputs()))
+        self.ctx_manager.process_command(
+            PlainTextMessage(text, self.va.get_outputs()))
 
     @staticmethod
     def expect_playback(file):
@@ -92,14 +96,16 @@ class DialogTestCase(TestCase):
 
     def assert_reply(self, pattern: Union[str, Pattern]):
         if self.ctx_manager is None:
-            raise AssertionError(f'метод assert_reply("{pattern}") вызван до using_context()')
+            raise AssertionError(
+                f'метод assert_reply("{pattern}") вызван до using_context()')
 
         reply = self.va.pull_output()
 
         if re.fullmatch(pattern, reply) is None:
             raise AssertionError(
                 f'Ожидался ответ, соответствующий шаблону:\n\t"{pattern}"\n' +
-                (f'но получен следующий ответ:\n\t"{reply}"' if reply != '' else 'но ответ не получен')
+                (f'но получен следующий ответ:\n\t"{reply}"' if reply !=
+                                                                '' else 'но ответ не получен')
             )
 
     def delay(self, duration=1.0):
@@ -135,7 +141,8 @@ class DialogTestCase(TestCase):
                 сценарий диалога в виде строки
         """
         if self.ctx_manager is None:
-            raise AssertionError('метод play_scenario() вызван до using_context()')
+            raise AssertionError(
+                'метод play_scenario() вызван до using_context()')
 
         for ln in scenario.split('\n'):
             line = ln.strip()
@@ -159,9 +166,11 @@ class DialogTestCase(TestCase):
                     raise AssertionError(
                         f'Некорректная команда "{line}": у тесткейса нет аттрибута (или метода) "{attr_name}"')
 
-                interaction = construct_active_interaction(interaction, construct_context=construct_context)
+                interaction = construct_active_interaction(
+                    interaction, construct_context=construct_context)
                 self.ctx_manager.process_active_interaction(interaction)
             else:
-                raise AssertionError(f'Некорректная строка в тестовом сценарии:\n\t"{line}"')
+                raise AssertionError(
+                    f'Некорректная строка в тестовом сценарии:\n\t"{line}"')
 
         return self.va.pull_output()

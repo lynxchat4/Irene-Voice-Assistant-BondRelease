@@ -121,8 +121,10 @@ class WebAudioOutImpl(AudioOutputChannel, ProtocolHandler):
         self._mute_group = mute_group
 
         conn.register_output(self)
-        conn.register_message_type(MT_OUT_AUDIO_LINK_PLAYBACK_PROGRESS, self._handle_progress)
-        conn.register_message_type(MT_OUT_AUDIO_LINK_PLAYBACK_DONE, self._handle_done)
+        conn.register_message_type(
+            MT_OUT_AUDIO_LINK_PLAYBACK_PROGRESS, self._handle_progress)
+        conn.register_message_type(
+            MT_OUT_AUDIO_LINK_PLAYBACK_DONE, self._handle_done)
 
     def _playback_syncer_for_message(self, msg: dict) -> Optional[PlaybackEndSyncer]:
         playback_id = msg['playbackId']
@@ -130,7 +132,8 @@ class WebAudioOutImpl(AudioOutputChannel, ProtocolHandler):
         try:
             return self._syncers[playback_id]
         except KeyError:
-            self._logger.warning(f"Неизвестный идентификатор воспроизведения {playback_id}")
+            self._logger.warning(
+                f"Неизвестный идентификатор воспроизведения {playback_id}")
             return None
 
     def _handle_progress(self, msg: dict):
@@ -151,13 +154,15 @@ class WebAudioOutImpl(AudioOutputChannel, ProtocolHandler):
         try:
             self._syncers[playback_id] = syncer
 
-            message = dict(playbackId=playback_id, url=self._file_bindings.get_full_path(binding_name))
+            message = dict(playbackId=playback_id,
+                           url=self._file_bindings.get_full_path(binding_name))
 
             if alt_text is not None:
                 message['altText'] = alt_text
 
             with self._mute_group.muted():
-                self._connection.send_message(MT_OUT_AUDIO_LINK_PLAYBACK_REQUEST, message)
+                self._connection.send_message(
+                    MT_OUT_AUDIO_LINK_PLAYBACK_REQUEST, message)
 
                 syncer.wait()
         finally:

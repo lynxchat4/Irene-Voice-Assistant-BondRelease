@@ -18,7 +18,8 @@ class ApiExtProvider:
     переданных функцией.
     """
 
-    __slots__ = ('_next_context', '_next_context_timeout', '_msg', '_construct_ctx')
+    __slots__ = ('_next_context', '_next_context_timeout',
+                 '_msg', '_construct_ctx')
 
     def __init__(self, context_constructor: VAContextConstructor):
         self._next_context: Optional[VAContext] = None
@@ -111,7 +112,8 @@ class ApiExtProvider:
                 return msg
 
             def context_set(self, ctx: VAContextSource, timeout: Optional[float] = None):
-                provider._next_context = provider._construct_ctx(ctx, ext_api_provider=provider)
+                provider._next_context = provider._construct_ctx(
+                    ctx, ext_api_provider=provider)
                 provider._next_context_timeout = timeout
 
             def submit_active_interaction(self, *args, **kwargs):
@@ -293,7 +295,8 @@ class CommandTreeContext(VAContext):
     """
     Контекст, интерпретирующий команды с помощью дерева команд (VACommandTree).
     """
-    __slots__ = ('_tree', '_unknown_command_context', '_ambiguous_command_context')
+    __slots__ = ('_tree', '_unknown_command_context',
+                 '_ambiguous_command_context')
 
     logger = getLogger('CommandTreeContext')
 
@@ -367,7 +370,8 @@ class TriggerPhraseContext(VAContext):
 
                     return self._next_context.handle_command(
                         va,
-                        PartialTextMessage(message, rest_text, {'is_direct': True})
+                        PartialTextMessage(message, rest_text, {
+                            'is_direct': True})
                     )
 
             words = words[1:]
@@ -513,7 +517,8 @@ def construct_context(
         TypeError
     """
     if construct_nested is None:
-        construct_nested = partial(construct_context, ext_api_provider=ext_api_provider)
+        construct_nested = partial(
+            construct_context, ext_api_provider=ext_api_provider)
 
     if isinstance(src, VAContext):
         return src
@@ -527,7 +532,8 @@ def construct_context(
     if isinstance(src, dict):
         src = src.copy()
         unknown_command_context, = src.pop(UNKNOWN_COMMAND_SPECIAL_KEY, None),
-        ambiguous_command_context, = src.pop(AMBIGUOUS_COMMAND_SPECIAL_KEY, None),
+        ambiguous_command_context, = src.pop(
+            AMBIGUOUS_COMMAND_SPECIAL_KEY, None),
 
         tree = VACommandTree[VAContext]()
         tree.add_commands(src, construct_nested)
@@ -567,4 +573,5 @@ def construct_context(
                 f"Вместо этого передан кортеж {repr(src)}"
             )
 
-    raise TypeError(f'Попытка создать контекст из объекта неподдерживаемого типа ({type(src)}): {repr(src)}')
+    raise TypeError(
+        f'Попытка создать контекст из объекта неподдерживаемого типа ({type(src)}): {repr(src)}')

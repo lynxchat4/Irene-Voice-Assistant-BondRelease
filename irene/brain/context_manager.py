@@ -48,7 +48,8 @@ class VAContextManager:
             message: сообщение от пользователя
         """
         with self._lck:
-            self._set_ctx(self._current_context.handle_command(self._va, message))
+            self._set_ctx(
+                self._current_context.handle_command(self._va, message))
 
     def process_active_interaction(self, interaction: VAActiveInteraction):
         """
@@ -58,7 +59,8 @@ class VAContextManager:
             interaction:
         """
         with self._lck:
-            interrupted: Optional[VAContext] = self._current_context.handle_interrupt(self._va)
+            interrupted: Optional[VAContext] = self._current_context.handle_interrupt(
+                self._va)
 
             interrupting: Optional[VAContext] = None
 
@@ -74,7 +76,8 @@ class VAContextManager:
                     if interrupted is None:
                         self._set_ctx(interrupting)
                     else:
-                        self._set_ctx(InterruptContext(interrupted, interrupting))
+                        self._set_ctx(InterruptContext(
+                            interrupted, interrupting))
 
     def _start_timeout(self):
         self._timeout = self._current_context.get_timeout(self.default_timeout)
@@ -137,4 +140,5 @@ class TimeoutTicker(Thread):
             try:
                 self._cm.tick_timeout(self._interval)
             except Exception:
-                logging.exception("Ошибка при обработке истечения времени ожидания команды")
+                logging.exception(
+                    "Ошибка при обработке истечения времени ожидания команды")

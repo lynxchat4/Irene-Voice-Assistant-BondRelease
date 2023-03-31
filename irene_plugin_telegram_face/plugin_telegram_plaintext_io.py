@@ -1,7 +1,7 @@
 from typing import Callable, Iterable
 
-from telebot import TeleBot
-from telebot.types import Message
+from telebot import TeleBot  # type: ignore
+from telebot.types import Message  # type: ignore
 
 from irene.brain.abc import InboundMessage, OutputChannel
 from irene.brain.output_pool import OutputPoolImpl
@@ -61,7 +61,8 @@ class TelegramPlaintextIOPlugin(MagicPlugin):
             *args,
             **kwargs
     ):
-        send_reply = self.config['replyInPrivate' if message.chat.type == 'private' else 'replyInGroups']
+        send_reply = self.config['replyInPrivate' if message.chat.type ==
+                                                     'private' else 'replyInGroups']
 
         if send_reply:
             channels.append(ReplyTextChannel(bot, message))
@@ -81,7 +82,8 @@ class TelegramPlaintextIOPlugin(MagicPlugin):
         @bot.message_handler(content_types=['text'])
         def handle_text_message(message: Message):
             outputs: list[OutputChannel] = call_all_as_wrappers(
-                pm.get_operation_sequence('telegram_add_message_reply_channels'),
+                pm.get_operation_sequence(
+                    'telegram_add_message_reply_channels'),
                 [],
                 message,
                 bot,

@@ -57,9 +57,11 @@ def _download_model_file(url: str) -> str:
     try:
         return pick_random_file(config['model_search_paths'], override_vars=dict(file_name=file_basename))
     except FileNotFoundError:
-        _logger.info(f"Файл модели '{file_basename}' не найден. Пытаюсь скачать.")
+        _logger.info(
+            f"Файл модели '{file_basename}' не найден. Пытаюсь скачать.")
 
-    target_path = first_substitution(config['model_storage_path'], override_vars=dict(file_name=file_basename))
+    target_path = first_substitution(
+        config['model_storage_path'], override_vars=dict(file_name=file_basename))
     os.makedirs(dirname(target_path), exist_ok=True)
 
     torch.hub.download_url_to_file(url, target_path)

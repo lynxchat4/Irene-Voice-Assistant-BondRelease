@@ -104,9 +104,12 @@ def extract_operations_from(
         value = getattr(obj, attr)
 
         op_name: str = getattr(value, _SIMPLE_PLUGIN_OP_NAME, attr)
-        name: str = getattr(value, _SIMPLE_PLUGIN_STEP_NAME, None) or f'{plugin.name}.{attr}'
-        dependencies: Collection[str] = getattr(value, _SIMPLE_PLUGIN_DEPENDENCIES, ())
-        reverse_dependencies: Collection[str] = getattr(value, _SIMPLE_PLUGIN_REVERSE_DEPENDENCIES, ())
+        name: str = getattr(value, _SIMPLE_PLUGIN_STEP_NAME,
+                            None) or f'{plugin.name}.{attr}'
+        dependencies: Collection[str] = getattr(
+            value, _SIMPLE_PLUGIN_DEPENDENCIES, ())
+        reverse_dependencies: Collection[str] = getattr(
+            value, _SIMPLE_PLUGIN_REVERSE_DEPENDENCIES, ())
 
         steps[op_name] = (
             OperationStep(

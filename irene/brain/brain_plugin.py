@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Optional, Callable
+from typing import Any, Optional, Callable, TypedDict, Literal
 
 from irene import VAContext, VAApiExt, construct_context, VAContextSource
 from irene.brain.brain import BrainImpl
@@ -13,15 +13,31 @@ from irene.plugin_loader.run_operation import call_all_as_wrappers
 
 class BrainPlugin(MagicPlugin):
     name = 'brain'
-    version = '1.0.0'
+    version = '1.0.1'
 
-    config = {
+    class _Config(TypedDict):
+        triggerPhrases: list[str]
+        unknownRootCommandReply: str
+        ambiguousRootCommandReply: str
+        unknownCommandReply: str
+        ambiguousCommandReply: str
+        defaultTimeout: float
+        timeoutCheckInterval: float
+        timeoutsDisabled: bool
+
+    config: _Config = {
         'triggerPhrases': ["ирина", "ирины", "ирину"],
         'unknownRootCommandReply': "Извини, я не поняла",
         'ambiguousRootCommandReply': "Извини, я не совсем поняла",
         'unknownCommandReply': "Не поняла...",
         'ambiguousCommandReply': "Не совсем поняла...",
+        'defaultTimeout': 10.0,
+        'timeoutsDisabled': False,
+        'timeoutCheckInterval': 1.0,
     }
+
+    _ErrorPhraseKeys = Literal['unknownRootCommandReply',
+    'ambiguousRootCommandReply']
 
     def __init__(self):
         super().__init__()
@@ -67,7 +83,7 @@ class BrainPlugin(MagicPlugin):
 
         context: Optional[VAContext] = None
 
-        def error_ctx(phrase_name: str, va: VAApiExt, text: str):
+        def error_ctx(phrase_name: BrainPlugin._ErrorPhraseKeys, va: VAApiExt, text: str):
             self._say_configured(phrase_name, va, text)
             if context is not None:
                 va.context_set(context)
@@ -75,10 +91,12 @@ class BrainPlugin(MagicPlugin):
         prev = prev.copy()
 
         if UNKNOWN_COMMAND_SPECIAL_KEY not in prev:
-            prev[UNKNOWN_COMMAND_SPECIAL_KEY] = partial(error_ctx, 'unknownCommandReply')
+            prev[UNKNOWN_COMMAND_SPECIAL_KEY] = partial(
+                error_ctx, 'unknownCommandReply')
 
         if AMBIGUOUS_COMMAND_SPECIAL_KEY not in prev:
-            prev[AMBIGUOUS_COMMAND_SPECIAL_KEY] = partial(error_ctx, 'ambiguousCommandReply')
+            prev[AMBIGUOUS_COMMAND_SPECIAL_KEY] = partial(
+                error_ctx, 'ambiguousCommandReply')
 
         context = nxt(prev, pm, *args, **kwargs)
         return context
@@ -100,7 +118,8 @@ class BrainPlugin(MagicPlugin):
         """
         Создаёт основной экземпляр Мозга.
         """
-        root_ctx: VAContext = call_all_as_wrappers(pm.get_operation_sequence('create_root_context'), None, pm)
+        root_ctx: VAContext = call_all_as_wrappers(
+            pm.get_operation_sequence('create_root_context'), None, pm)
         self._brain = BrainImpl(
             main_context=root_ctx,
             config=self.config,
@@ -125,7 +144,7 @@ class BrainPlugin(MagicPlugin):
         """
         return nxt(prev or self._brain, *args, **kwargs)
 
-    def _say_configured(self, key: str, va: VAApiExt, _: str):
+    def _say_configured(self, key: _ErrorPhraseKeys, va: VAApiExt, _: str):
         va.say(self.config[key])
 
     @operation('create_root_context')
@@ -145,8 +164,10 @@ class BrainPlugin(MagicPlugin):
         """
         tree: VACommandTree[VAContext] = VACommandTree()
 
-        unknown_command_context = prev or partial(self._say_configured, 'unknownRootCommandReply')
-        ambiguous_command_context = partial(self._say_configured, 'ambiguousRootCommandReply')
+        unknown_command_context = prev or partial(
+            self._say_configured, 'unknownRootCommandReply')
+        ambiguous_command_context = partial(
+            self._say_configured, 'ambiguousRootCommandReply')
 
         context_constructor = partial(self._construct_context, pm)
 
@@ -155,11 +176,13 @@ class BrainPlugin(MagicPlugin):
 
             if UNKNOWN_COMMAND_SPECIAL_KEY in commands:
                 commands = commands.copy()
-                unknown_command_context = commands.pop(UNKNOWN_COMMAND_SPECIAL_KEY)
+                unknown_command_context = commands.pop(
+                    UNKNOWN_COMMAND_SPECIAL_KEY)
 
             if AMBIGUOUS_COMMAND_SPECIAL_KEY in commands:
                 commands = commands.copy()
-                ambiguous_command_context = commands.pop(AMBIGUOUS_COMMAND_SPECIAL_KEY)
+                ambiguous_command_context = commands.pop(
+                    AMBIGUOUS_COMMAND_SPECIAL_KEY)
 
             tree.add_commands(commands, context_constructor)
 
@@ -207,7 +230,8 @@ class BrainPlugin(MagicPlugin):
 
         return nxt(
             TriggerPhraseContext(
-                [phrase.split(' ') for phrase in self.config['triggerPhrases']],
+                [phrase.split(' ')
+                 for phrase in self.config['triggerPhrases']],
                 prev,
             ),
             *args, **kwargs

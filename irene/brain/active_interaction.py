@@ -44,6 +44,11 @@ def construct_active_interaction(
         return src()
 
     if callable(src):
-        return FunctionActiveInteraction(src, related_message, construct_context)
+        return FunctionActiveInteraction(
+            src,  # type: ignore
+            related_message,
+            construct_context
+        )
 
-    raise TypeError(f'Попытка создать активное взаимодействие из объекта неподдерживаемого типа ({type(src)}): {src}')
+    raise TypeError(
+        f'Попытка создать активное взаимодействие из объекта неподдерживаемого типа ({type(src)}): {src}')

@@ -26,7 +26,8 @@ class FilePatternSubstitutionTest(unittest.TestCase):
         res = set(
             substitute_pattern(
                 '/{v1}/{v2}/{v3}',
-                override_vars=dict(v1=['var', 'opt'], v2=['lib', 'lib64'], v3='buz')
+                override_vars=dict(v1=['var', 'opt'], v2=[
+                    'lib', 'lib64'], v3='buz')
             )
         )
 
@@ -37,7 +38,8 @@ class FilePatternSubstitutionTest(unittest.TestCase):
 
     def test_unknown_variable(self):
         with self.assertRaises(ValueError) as e:
-            list(substitute_pattern('{foo}/bar', override_vars=dict(fo0='bar')))
+            list(substitute_pattern('{foo}/bar',
+                                    override_vars=dict(fo0='bar')))
 
         self.assertIn('\'{foo}/bar\'', str(e.exception))
         self.assertIn('\'foo\'', str(e.exception))

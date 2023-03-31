@@ -3,41 +3,48 @@
 
 import os
 
-from vacore import VACore
+from vacore import VACore  # type: ignore
 
-modname = os.path.basename(__file__)[:-3] # calculating modname
+modname = os.path.basename(__file__)[:-3]  # calculating modname
+
 
 # функция на старте
-def start(core:VACore):
+
+
+def start(core: VACore):
     manifest = {
         "name": "Озвучивание текста",
         "version": "1.3",
         "require_online": False,
 
         "default_options": {
-            "wavBeforeGeneration": True, # звук перед генерацией из буфера обмена, которая может быть долгой
-            "wavPath": 'media/timer.wav', # путь к звуковому файлу
+            # звук перед генерацией из буфера обмена, которая может быть долгой
+            "wavBeforeGeneration": True,
+            "wavPath": 'media/timer.wav',  # путь к звуковому файлу
         },
 
         "commands": {
             "озвучь|скажи": say,
-            "буфер": say_clipboard, # озвучка буфера обмена
+            "буфер": say_clipboard,  # озвучка буфера обмена
         }
     }
     return manifest
 
-def start_with_options(core:VACore, manifest:dict):
+
+def start_with_options(core: VACore, manifest: dict):
     pass
 
-def say(core:VACore, phrase:str):
+
+def say(core: VACore, phrase: str):
     if phrase == "":
         core.say2("Нечего сказать")
         return
 
     core.say2(phrase)
 
-def say_clipboard(core:VACore, phrase:str):
-    import win32clipboard
+
+def say_clipboard(core: VACore, phrase: str):
+    import win32clipboard  # type: ignore
 
     win32clipboard.OpenClipboard()
     data = win32clipboard.GetClipboardData()

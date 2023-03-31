@@ -58,7 +58,8 @@ class MuteGroupTest(unittest.TestCase):
         ms = [TestMuteable() for _ in range(10)]
         mg = MuteGroupImpl()
 
-        for m in ms: mg.add_item(m)
+        for m in ms:
+            mg.add_item(m)
 
         with mg.muted():
             self.assertTrue(all(it.muted for it in ms))

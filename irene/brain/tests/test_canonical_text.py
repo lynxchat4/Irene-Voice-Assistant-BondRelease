@@ -38,7 +38,8 @@ class ToCanonicalTest(unittest.TestCase):
     def test_all(self):
         self.assertEqual(
             "привет ирина включи свет",
-            convert_to_canonical("  \nПривет \nИрина!! !   включи свет!! :)))) ^_^")
+            convert_to_canonical(
+                "  \nПривет \nИрина!! !   включи свет!! :)))) ^_^")
         )
 
 

@@ -2,9 +2,9 @@ import contextlib
 import json
 from logging import getLogger
 from queue import Queue
-from typing import Any, Optional, Callable, Iterable
+from typing import Any, Optional, Callable, Iterable, TypedDict
 
-import sounddevice
+import sounddevice  # type: ignore
 
 from irene.face.abc import LocalInput, Muteable, MuteGroup
 from irene.face.mute_group import NULL_MUTE_GROUP
@@ -14,7 +14,13 @@ from irene.plugin_loader.run_operation import call_all_as_wrappers
 name = 'local_input_sounddevice_vosk'
 version = '0.1.0'
 
-config = {
+
+class _Config(TypedDict):
+    deviceId: Optional[int]
+    sampleRate: Optional[int]
+
+
+config: _Config = {
     'deviceId': None,
     'sampleRate': None,
 }
@@ -42,7 +48,7 @@ class _VoskSoundDeviceInput(LocalInput, Muteable):
     def __init__(self, pm: PluginManager, mute_group: MuteGroup):
         self._device_id = config['deviceId']
         self._device_info = sounddevice.query_devices(self._device_id, 'input')
-        self._sample_rate: int = int(config['sampleRate']) if config.get('sampleRate') is not None \
+        self._sample_rate: int = int(config['sampleRate']) if config['sampleRate'] is not None \
             else self._device_info['default_samplerate']
 
         self._model = call_all_as_wrappers(
@@ -60,14 +66,15 @@ class _VoskSoundDeviceInput(LocalInput, Muteable):
 
     @contextlib.contextmanager
     def run(self):
-        import vosk
+        import vosk  # type: ignore
 
         queue = Queue()
         aborted = False
 
         def _stream_callback(data, _frames, _time, status):
             if status:
-                _logger.debug('input stream callback flags: %s', status)  # ¯\_(ツ)_/¯
+                _logger.debug('input stream callback flags: %s',
+                              status)  # ¯\_(ツ)_/¯
             if not self._muted:
                 queue.put(bytes(data))
 

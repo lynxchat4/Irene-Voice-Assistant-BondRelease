@@ -115,7 +115,8 @@ def substitute_pattern(
     Raises:
         ValueError если шаблон использует переменную, значение которой не определено
     """
-    all_vars: dict[str, PathVariableValue] = {**_global_variables, **(override_vars or {})}
+    all_vars: dict[str, PathVariableValue] = {
+        **_global_variables, **(override_vars or {})}
 
     for k, v in all_vars.items():
         if isinstance(v, str):
@@ -136,7 +137,8 @@ def substitute_pattern(
     try:
         yield pattern.format(**all_vars)
     except KeyError as e:
-        raise ValueError(f"Неизвестная переменная '{e.args[0]}' в шаблоне пути файла '{pattern}'") from None
+        raise ValueError(
+            f"Неизвестная переменная '{e.args[0]}' в шаблоне пути файла '{pattern}'") from None
 
 
 def substitute_patterns(

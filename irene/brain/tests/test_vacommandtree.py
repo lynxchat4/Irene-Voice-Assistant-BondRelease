@@ -51,7 +51,8 @@ class VACommandTreeTest(unittest.TestCase):
         self.assert_result("выключи звук немедленно", 'mute', "немедленно")
 
     def test_additional_text_multiple_words(self):
-        self.assert_result("выключи звук немедленно пожалуйста", 'mute', "немедленно пожалуйста")
+        self.assert_result("выключи звук немедленно пожалуйста",
+                           'mute', "немедленно пожалуйста")
 
     def test_add_conflicting_rules(self):
         with self.assertRaises(ConflictingCommandsException) as e:

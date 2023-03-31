@@ -3,7 +3,7 @@ import threading
 from logging import getLogger
 from typing import Optional
 
-import uvicorn
+import uvicorn  # type: ignore
 from fastapi import FastAPI, APIRouter
 
 from irene.plugin_loader.abc import PluginManager
@@ -56,7 +56,8 @@ class WebServerPlugin(MagicPlugin):
 
             step.step(router, pm)
 
-            api_root_router.include_router(router, prefix=f'/{step.plugin.name}')
+            api_root_router.include_router(
+                router, prefix=f'/{step.plugin.name}')
 
         app.include_router(api_root_router, prefix='/api')
 
@@ -64,7 +65,8 @@ class WebServerPlugin(MagicPlugin):
         self._thread = threading.current_thread()
 
         if 'reload' in self.config or 'workers' in self.config:
-            self._logger.warning(f"Конфигурация содержит параметры reload и/или workers. Они будут проигнорированы.")
+            self._logger.warning(
+                f"Конфигурация содержит параметры reload и/или workers. Они будут проигнорированы.")
 
         uvicorn_config = uvicorn.Config(
             self._create_app(pm),

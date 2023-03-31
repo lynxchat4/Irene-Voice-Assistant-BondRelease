@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Optional, Any
+from typing import Optional, TypedDict
 
 from irene.brain.abc import VAContext, OutputChannelPool, VAApi, VAActiveInteractionSource, InboundMessage, Brain, \
     VAContextConstructor
@@ -55,7 +55,8 @@ class _VAApiProvider:
                     related_message: Optional[InboundMessage] = None,
             ):
                 if provider._context_manager is None:
-                    raise RuntimeError('submit_active_interaction вызван до инициализации ссылки на VAContextManager')
+                    raise RuntimeError(
+                        'submit_active_interaction вызван до инициализации ссылки на VAContextManager')
 
                 ai = construct_active_interaction(
                     interaction,
@@ -68,30 +69,37 @@ class _VAApiProvider:
 
 
 class BrainImpl(Brain):
+    class Config(TypedDict):
+        defaultTimeout: float
+        timeoutCheckInterval: float
+        timeoutsDisabled: bool
+
     def __init__(
             self,
             *,
             main_context: VAContext,
-            config: dict[str, Any],
+            config: Config,
             predefined_outputs: OutputChannelPool = EMPTY_OUTPUT_POOL,
             context_constructor: VAContextConstructor,
     ):
         self._config = config
         self._outputs = CompositeOutputPool((predefined_outputs,))
-        self._api_provider = _VAApiProvider(outputs=self._outputs, context_constructor=context_constructor)
+        self._api_provider = _VAApiProvider(
+            outputs=self._outputs, context_constructor=context_constructor)
 
         self._context_manager = VAContextManager(
             self._api_provider.get_api(),
             main_context,
-            config.get('defaultTimeout', 10.0),
+            config['defaultTimeout'],
         )
 
         self._api_provider.use_context_manager(self._context_manager)
 
         self._ticker: Optional[TimeoutTicker] = None
 
-        if not config.get('timeoutsDisabled', False):
-            self._ticker = TimeoutTicker(self._context_manager, config.get('timeoutCheckInterval', 1.0))
+        if not config['timeoutsDisabled']:
+            self._ticker = TimeoutTicker(
+                self._context_manager, config['timeoutCheckInterval'])
             self._ticker.start()
 
     def _process_message(self, message: InboundMessage):

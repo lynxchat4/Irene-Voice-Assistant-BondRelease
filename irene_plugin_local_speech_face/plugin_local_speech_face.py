@@ -68,7 +68,11 @@ class LocalSpeechFacePlugin(MagicPlugin):
 
     @after('create_brain')
     def init(self, pm: PluginManager, *_args, **_kwargs):
-        self._brain = call_all_as_wrappers(pm.get_operation_sequence('get_brain'), None, pm)
+        self._brain = call_all_as_wrappers(
+            pm.get_operation_sequence('get_brain'),
+            None,
+            pm
+        )
 
         if self._brain is None:
             self._logger.error("Не удалось найти мозг")
@@ -115,13 +119,18 @@ class LocalSpeechFacePlugin(MagicPlugin):
             )
 
             if len(new_outputs) == 0:
-                self._logger.error("Не удалось создать канал вывода из настроек %s", output_config)
+                self._logger.error(
+                    "Не удалось создать канал вывода из настроек %s",
+                    output_config
+                )
                 continue
 
             outputs.extend(new_outputs)
 
         if len(outputs) == 0:
-            self._logger.error("Не удалось инициализировать ни один из каналов вывода")
+            self._logger.error(
+                "Не удалось инициализировать ни один из каналов вывода"
+            )
             return
 
         self._outputs = OutputPoolImpl(outputs)

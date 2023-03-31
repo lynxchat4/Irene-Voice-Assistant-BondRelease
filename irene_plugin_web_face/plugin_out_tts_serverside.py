@@ -49,7 +49,8 @@ def _init_ttss(pm: PluginManager) -> list[FileWritingTTS]:
 class _ServersideTTSOutput(ProtocolHandler):
     def __init__(self, connection: Connection, ttss: Iterable[FileWritingTTS]):
         try:
-            audio_output, = connection.get_associated_outputs().get_channels(AudioOutputChannel)  # type: ignore
+            audio_output, = connection.get_associated_outputs(
+            ).get_channels(AudioOutputChannel)  # type: ignore
         except OutputChannelNotFoundError:
             raise _NonFatalError(
                 "не настроен протокол вывода аудио. "

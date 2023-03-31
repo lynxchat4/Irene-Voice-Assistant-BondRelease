@@ -1,5 +1,5 @@
-from telebot import TeleBot
-from telebot.types import Message
+from telebot import TeleBot  # type: ignore
+from telebot.types import Message  # type: ignore
 
 
 def is_direct_message(message: Message, bot: TeleBot) -> bool:

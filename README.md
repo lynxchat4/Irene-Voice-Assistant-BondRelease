@@ -1,5 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Core tests](https://github.com/AlexeyBond/Irene-Voice-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexeyBond/Irene-Voice-Assistant/actions/workflows/ci.yml)
+[![Core tests](https://github.com/AlexeyBond/Irene-Voice-Assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/AlexeyBond/Irene-Voice-Assistant/actions/workflows/tests.yml)
 [![Core coverage Status](https://coveralls.io/repos/github/AlexeyBond/Irene-Voice-Assistant/badge.svg)](https://coveralls.io/github/AlexeyBond/Irene-Voice-Assistant)
 [![Docker build](https://github.com/AlexeyBond/Irene-Voice-Assistant/actions/workflows/docker-image.yml/badge.svg)](https://github.com/AlexeyBond/Irene-Voice-Assistant/actions/workflows/docker-image.yml)
 

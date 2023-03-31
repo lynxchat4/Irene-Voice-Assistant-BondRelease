@@ -60,7 +60,8 @@ class _TextInputImpl(ProtocolHandler):
         self._message_meta = message_meta
         self._connection = connection
 
-        self._connection.register_message_type(message_type, self._handle_client_message)
+        self._connection.register_message_type(
+            message_type, self._handle_client_message)
 
     def _handle_client_message(self, payload: dict):
         self._connection.receive_inbound_message(

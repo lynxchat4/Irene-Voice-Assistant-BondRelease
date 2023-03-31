@@ -1,5 +1,5 @@
-from telebot import TeleBot
-from telebot.types import Message
+from telebot import TeleBot  # type: ignore
+from telebot.types import Message  # type: ignore
 
 from irene.brain.abc import OutputChannelPool
 from irene.brain.inbound_messages import PlainTextMessage
@@ -16,7 +16,11 @@ class TelegramMessage(PlainTextMessage):
             bot: TeleBot,
             outputs: OutputChannelPool
     ):
-        super().__init__(text, outputs, {'is_direct': is_direct_message(message, bot)})
+        super().__init__(
+            text,
+            outputs,
+            {'is_direct': is_direct_message(message, bot)}
+        )
         self.message = message
         self.bot = bot
 

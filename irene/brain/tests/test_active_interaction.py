@@ -14,14 +14,17 @@ class ActiveInteractionConstructorTest(unittest.TestCase):
 
     def test_function(self):
         self.assertIsInstance(
-            construct_active_interaction(self.stub_interaction_fn, construct_context=construct_context),
+            construct_active_interaction(
+                self.stub_interaction_fn, construct_context=construct_context),
             VAActiveInteraction
         )
 
     def test_ready_made_object(self):
-        obj = construct_active_interaction(self.stub_interaction_fn, construct_context=construct_context)
+        obj = construct_active_interaction(
+            self.stub_interaction_fn, construct_context=construct_context)
 
-        self.assertIs(construct_active_interaction(obj, construct_context=construct_context), obj)
+        self.assertIs(construct_active_interaction(
+            obj, construct_context=construct_context), obj)
 
     def test_class(self):
         class _TestInteraction(VAActiveInteraction):
@@ -29,7 +32,8 @@ class ActiveInteractionConstructorTest(unittest.TestCase):
                 pass
 
         self.assertIsInstance(
-            construct_active_interaction(_TestInteraction, construct_context=construct_context),
+            construct_active_interaction(
+                _TestInteraction, construct_context=construct_context),
             _TestInteraction
         )
 
@@ -37,7 +41,8 @@ class ActiveInteractionConstructorTest(unittest.TestCase):
         with self.assertRaises(Exception):
             # Значение неверного типа передано намеренно
             # noinspection PyTypeChecker
-            construct_active_interaction('foo', construct_context=construct_context)
+            construct_active_interaction(
+                'foo', construct_context=construct_context)
 
 
 class ActiveInteractionTest(DialogTestCase):
@@ -108,7 +113,8 @@ class ActiveInteractionTest(DialogTestCase):
                 return None
 
             def handle_restore(self, va: VAApi) -> Optional[VAContext]:
-                raise AssertionError('UnimportantContext никогда не должен восстанавливаться')
+                raise AssertionError(
+                    'UnimportantContext никогда не должен восстанавливаться')
 
         return UnimportantContext
 

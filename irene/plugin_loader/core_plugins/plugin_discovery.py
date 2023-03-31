@@ -57,12 +57,15 @@ class PluginDiscoveryPlugin(MagicPlugin):
     def bootstrap(self, pm: PluginManager, *_args, **_kwargs):
         sys.path.extend(substitute_patterns(self.config['appendPythonPath']))
 
-        plugin_discover_op = list(pm.get_operation_sequence('discover_plugins_at_path'))
-        plugin_discovered_op = list(pm.get_operation_sequence('plugin_discovered'))
+        plugin_discover_op = list(
+            pm.get_operation_sequence('discover_plugins_at_path'))
+        plugin_discovered_op = list(
+            pm.get_operation_sequence('plugin_discovered'))
 
         for plugin_path in match_files(self.config['pluginPaths']):
             try:
-                plugins: Optional[Iterable[Plugin]] = call_until_first_result(plugin_discover_op, pm, plugin_path)
+                plugins: Optional[Iterable[Plugin]] = call_until_first_result(
+                    plugin_discover_op, pm, plugin_path)
             except PluginExcludedException:
                 self._logger.info(
                     "Плагин из файла %s отключён",

@@ -44,7 +44,8 @@ class LoggingPlugin(MagicPlugin):
 
     @after('config')
     def bootstrap(self, _pm, *_args, **_kwargs):
-        basicConfig(**{**self.config.get('basicConfig', {}), **{'force': True}})
+        basicConfig(
+            **{**self.config.get('basicConfig', {}), **{'force': True}})
 
         for logger, level in self.config.get('levelOverrides', {}).items():
             getLogger(logger).setLevel(level)

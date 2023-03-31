@@ -10,7 +10,7 @@ from textwrap import dedent
 from threading import Event
 from typing import Any, Iterable, Optional
 
-import yaml
+import yaml  # type: ignore
 
 from irene.plugin_loader.file_patterns import match_files, first_substitution, substitute_pattern
 from irene.plugin_loader.utils.snapshot_hash import snapshot_hash
@@ -118,11 +118,14 @@ class ConfigurationScope:
             with file_path.open('r', encoding=encoding) as f:
                 data = yaml.load(f, Loader)
         except Exception as e:
-            _logger.exception(f"Ошибка при чтении файла конфигурации {file_path}", exc_info=e)
-            raise Exception(f"Не удалось прочитать файл конфигурации {file_path}") from None
+            _logger.exception(
+                f"Ошибка при чтении файла конфигурации {file_path}", exc_info=e)
+            raise Exception(
+                f"Не удалось прочитать файл конфигурации {file_path}") from None
 
         if not isinstance(data, dict):
-            raise Exception(f"Файл конфигурации {file_path} содержит что-то неожиданное вместо одного объекта")
+            raise Exception(
+                f"Файл конфигурации {file_path} содержит что-то неожиданное вместо одного объекта")
 
         self.apply_patch(data)
 
@@ -272,7 +275,8 @@ class ConfigPlugin(MagicPlugin):
     def _ensure_config_dir(self):
         if not self._config_dir.is_dir():
             if self._config_dir.exists():
-                raise Exception(f'Папка конфигурации ({self._config_dir}) существует, но не является папкой.')
+                raise Exception(
+                    f'Папка конфигурации ({self._config_dir}) существует, но не является папкой.')
 
             self._config_dir.mkdir(exist_ok=True, parents=True)
 
@@ -300,13 +304,15 @@ class ConfigPlugin(MagicPlugin):
             dst_path = self._config_dir.joinpath(fn)
 
             if dst_path.is_file():
-                print(f"Файл {dst_path} существует, он будет заменён файлом из шаблона {template}")
+                print(
+                    f"Файл {dst_path} существует, он будет заменён файлом из шаблона {template}")
 
             copyfile(join(template_path, fn), dst_path)
 
     def receive_cli_arguments(self, args: Any, *_args, **_kwargs):
         self._config_dir = Path(first_substitution(args.config_dir))
-        self._defaults_dirs = [Path(it) for pattern in args.default_config_paths for it in substitute_pattern(pattern)]
+        self._defaults_dirs = [Path(
+            it) for pattern in args.default_config_paths for it in substitute_pattern(pattern)]
 
         if len(self._template_paths) > 0:
             if args.list_config_templates:
@@ -437,9 +443,11 @@ class ConfigPlugin(MagicPlugin):
                             scope_name,
                         )
                         try:
-                            scope.store_main_file(self._get_file_encoding(), self.config['yamlDumpOptions'])
+                            scope.store_main_file(
+                                self._get_file_encoding(), self.config['yamlDumpOptions'])
                         except Exception:
-                            _logger.exception("Ошибка при сохранении конфигурации для %s", scope_name)
+                            _logger.exception(
+                                "Ошибка при сохранении конфигурации для %s", scope_name)
                     elif watch_file_changes and scope.was_modified_on_disk():
                         _logger.info(
                             "Файл конфигурации для %s был изменён, загружаю его",
@@ -448,12 +456,14 @@ class ConfigPlugin(MagicPlugin):
                         try:
                             scope.load_main_file(self._get_file_encoding())
                         except Exception:
-                            _logger.exception("Ошибка при загрузке конфигурации для %s", scope_name)
+                            _logger.exception(
+                                "Ошибка при загрузке конфигурации для %s", scope_name)
 
                         try:
                             scope.notify_plugin()
                         except Exception:
-                            _logger.exception("Ошибка при обработке изменений в конфигурации %s", scope_name)
+                            _logger.exception(
+                                "Ошибка при обработке изменений в конфигурации %s", scope_name)
         finally:
             self._watch_terminated.set()
 

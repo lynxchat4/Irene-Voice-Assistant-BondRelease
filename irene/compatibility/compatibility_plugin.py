@@ -95,7 +95,8 @@ class _OriginalPlugin(MagicPlugin):
             pass
         else:
             for (name, callbacks) in playvaws.items():
-                self._audio_output_types[name] = _make_playwav_channel_type(self._core, *callbacks)
+                self._audio_output_types[name] = _make_playwav_channel_type(
+                    self._core, *callbacks)
 
         # вызов конструктора после присвоения `config` чтобы MagicPlugin смог его (config) заметить
         super().__init__()
@@ -146,7 +147,8 @@ class _OriginalPlugin(MagicPlugin):
             first, *rest = prev
 
             if callable(first) and getattr(first, '__module__', None) == self._module.__name__:
-                first_cast: Callable[[VACore, str, Any], None] = first  # type: ignore
+                first_cast: Callable[[VACore, str, Any],
+                None] = first  # type: ignore
                 prev = (self._wrap_context_fn_with_args(first_cast), rest[0])
 
         return nxt(prev, *args, **kwargs)
@@ -171,7 +173,8 @@ class _OriginalPlugin(MagicPlugin):
         requested_type = settings.get('type')
 
         if requested_type in self._audio_output_types:
-            prev.append(self._audio_output_types[requested_type](kwargs.get('mute_group', NULL_MUTE_GROUP)))
+            prev.append(self._audio_output_types[requested_type](
+                kwargs.get('mute_group', NULL_MUTE_GROUP)))
 
         return nxt(prev, pm, settings, *args, **kwargs)
 

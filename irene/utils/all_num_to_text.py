@@ -5,11 +5,11 @@
 
 import re
 
-from lingua_franca.format import pronounce_number
+from lingua_franca.format import pronounce_number  # type: ignore
 
 
 def load_language(lang: str):
-    import lingua_franca
+    import lingua_franca  # type: ignore
     lingua_franca.load_language(lang)
 
 

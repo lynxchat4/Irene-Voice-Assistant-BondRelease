@@ -198,4 +198,5 @@ class AudioReplyChannel(AudioOutputChannel):
     def send_file(self, file_path: str, *, telebot_add_args: Optional[dict[str, Any]] = None, **kwargs):
         telebot_args = telebot_add_args.copy() if telebot_add_args is not None else {}
         telebot_args['reply_to_message_id'] = self._message.id
-        self._channel.send_file(file_path, telebot_add_args=telebot_args, **kwargs)
+        self._channel.send_file(
+            file_path, telebot_add_args=telebot_args, **kwargs)

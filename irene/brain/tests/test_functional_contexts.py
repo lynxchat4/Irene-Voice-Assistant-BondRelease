@@ -47,7 +47,8 @@ class FunctionalContextsTest(DialogTestCase):
         )
 
     def test_str_with_args(self):
-        ctx = construct_context((self._timer_set_with_purpose, "сварить пельмени"))
+        ctx = construct_context(
+            (self._timer_set_with_purpose, "сварить пельмени"))
 
         self.assertRegex(
             str(ctx),

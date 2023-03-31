@@ -87,7 +87,8 @@ def _create_ffmpeg_converter() -> Optional[AudioConverter]:
     ffmpeg_path = _get_ffmpeg_path()
 
     if ffmpeg_path is not None:
-        _logger.debug("Исполняемый файл ffmpeg найден по пути: %s", ffmpeg_path)
+        _logger.debug(
+            "Исполняемый файл ffmpeg найден по пути: %s", ffmpeg_path)
         return _AudioConverterImpl(ffmpeg_path)
 
     _logger.info("Исполняемый файл ffmpeg не найден")

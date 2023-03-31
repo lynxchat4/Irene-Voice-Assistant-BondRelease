@@ -29,7 +29,8 @@ def register_fastapi_endpoints(router: APIRouter, pm: PluginManager, *_args, **_
         """
         Возвращает актуальный файл модели для Vosk.
         """
-        local_path = call_until_first_result(pm.get_operation_sequence('get_vosk_model_local_path'))
+        local_path = call_until_first_result(
+            pm.get_operation_sequence('get_vosk_model_local_path'))
 
         if not local_path:
             raise HTTPException(503)

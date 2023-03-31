@@ -9,7 +9,7 @@ from queue import Queue
 from threading import Thread
 from typing import Callable, Optional, Any
 
-import vosk
+import vosk  # type: ignore
 from fastapi import APIRouter, Query, HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
@@ -79,7 +79,8 @@ def receive_cli_arguments(args: Any, *_args, **_kwargs):
         return
 
     try:
-        first_substitution(path_template, override_vars=dict(connection_id='test', timestamp='42'))
+        first_substitution(path_template, override_vars=dict(
+            connection_id='test', timestamp='42'))
     except Exception:
         _logger.exception(
             "Шаблон, переданный через параметр --dump-server-stt-input не корректен и будет проигнорирован")
@@ -184,7 +185,8 @@ class _RecognizerWorker(Muteable):
         if len(text) > 0 and not self._muted:
             _logger.debug("Распознано: %s", text)
 
-            self._connection.send_message(MT_IN_SERVER_SIDE_STT_RECOGNIZED, dict(text=text))
+            self._connection.send_message(
+                MT_IN_SERVER_SIDE_STT_RECOGNIZED, dict(text=text))
 
             self._connection.receive_inbound_message(
                 _ServerSttMessage(self._connection, text)
@@ -200,7 +202,8 @@ class _RecognizerWorker(Muteable):
         timestamp = str(int(datetime.datetime.utcnow().timestamp()))
         path = first_substitution(
             tpl,
-            override_vars=dict(connection_id=self._connection_id, timestamp=timestamp)
+            override_vars=dict(
+                connection_id=self._connection_id, timestamp=timestamp)
         )
 
         pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -266,7 +269,8 @@ class _ServerSTTHandler(ProtocolHandler):
     async def accept_connection(self, ws: WebSocket, sample_rate: int):
         await ws.accept()
 
-        worker = _RecognizerWorker(self._connection, self._mute_group, self._model, sample_rate, self._id)
+        worker = _RecognizerWorker(
+            self._connection, self._mute_group, self._model, sample_rate, self._id)
         self._workers.append(worker)
 
         try:
@@ -319,7 +323,8 @@ def register_fastapi_endpoints(router: APIRouter, *_args, **_kwargs):
     async def serve_ws(
             ws: WebSocket,
             handler_id: str,
-            sample_rate: int = Query(default=IN_SERVER_SIDE_STT_DEFAULT_SAMPLE_RATE),
+            sample_rate: int = Query(
+                default=IN_SERVER_SIDE_STT_DEFAULT_SAMPLE_RATE),
     ):
         try:
             handler = _handlers[handler_id]

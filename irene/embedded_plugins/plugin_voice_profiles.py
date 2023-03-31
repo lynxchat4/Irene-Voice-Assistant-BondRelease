@@ -280,16 +280,19 @@ class _VoiceProfile(Metadata):
 
         if self._file_writing_tts_proxy is not None:
             try:
-                self._file_writing_tts_proxy.replace_implementation(self._create_file_writing_tts())
+                self._file_writing_tts_proxy.replace_implementation(
+                    self._create_file_writing_tts())
             except _TTSCreationFailure:
                 _logger.exception(
                     f"Не удалось пересоздать файловый TTS для профиля {self._id} после изменения настроек")
 
         if self._immediate_tts_proxy is not None:
             try:
-                self._immediate_tts_proxy.replace_implementation(self._create_immediate_tts())
+                self._immediate_tts_proxy.replace_implementation(
+                    self._create_immediate_tts())
             except _TTSCreationFailure:
-                _logger.exception(f"Не удалось пересоздать TTS для профиля {self._id} после изменения настроек")
+                _logger.exception(
+                    f"Не удалось пересоздать TTS для профиля {self._id} после изменения настроек")
 
     @property
     def meta(self) -> MetadataMapping:
@@ -310,7 +313,8 @@ class _VoiceProfile(Metadata):
         )
 
         if tts is None:
-            raise _TTSCreationFailure(f"Не удалось создать файловый TTS для профиля {self._id}")
+            raise _TTSCreationFailure(
+                f"Не удалось создать файловый TTS для профиля {self._id}")
 
         return tts
 
@@ -327,7 +331,8 @@ class _VoiceProfile(Metadata):
         if tts is None:
             file_tts = self.get_file_writing_tts(self._pm)
 
-            player_settings: dict[str, Any] = self._settings.get('localPlayer', config['defaultLocalPlayer'])
+            player_settings: dict[str, Any] = self._settings.get(
+                'localPlayer', config['defaultLocalPlayer'])
 
             players = call_all_as_wrappers(
                 self._pm.get_operation_sequence('create_local_outputs'),
@@ -336,10 +341,12 @@ class _VoiceProfile(Metadata):
                 player_settings,
             )
 
-            filtered_players = list(filter(AudioOutputChannel.__instancecheck__, players))
+            filtered_players = list(
+                filter(AudioOutputChannel.__instancecheck__, players))
 
             if len(filtered_players) == 0:
-                raise _TTSCreationFailure(f"Не удалось создать канал вывода звука для профиля {self._id}")
+                raise _TTSCreationFailure(
+                    f"Не удалось создать канал вывода звука для профиля {self._id}")
 
             tts = FilePlaybackTTS(file_tts, filtered_players[0])
 
@@ -379,7 +386,8 @@ def receive_config(config: dict[str, Any], *_args, **_kwargs):
             if profile_id in _profiles:
                 _profiles[profile_id].update_settings(profile_settings)
             else:
-                _profiles[profile_id] = _VoiceProfile(profile_id, profile_settings)
+                _profiles[profile_id] = _VoiceProfile(
+                    profile_id, profile_settings)
 
     for profile_id in _profiles.keys():
         if not new_profiles.get(profile_id, {}).get('enabled', False):

@@ -42,7 +42,8 @@ class MagicPluginTest(unittest.TestCase):
 
         self.assertEqual(
             list(plugin.get_operation_steps('init')),
-            [OperationStep(plugin.init, 'TestPlugin.init', plugin, ('foo', 'bar'), ('buz',))]
+            [OperationStep(plugin.init, 'TestPlugin.init',
+                           plugin, ('foo', 'bar'), ('buz',))]
         )
 
     def test_multiple_steps(self):
@@ -60,7 +61,8 @@ class MagicPluginTest(unittest.TestCase):
         self.assertEqual(
             list(plugin.get_operation_steps('init')),
             [
-                OperationStep(plugin.init2, 'TestPlugin.init2', plugin, ('TestPlugin.init',), ()),
+                OperationStep(plugin.init2, 'TestPlugin.init2',
+                              plugin, ('TestPlugin.init',), ()),
                 OperationStep(plugin.init, 'TestPlugin.init', plugin, (), ()),
             ]
         )
@@ -117,7 +119,8 @@ class MagicPluginTest(unittest.TestCase):
         )
         self.assertEqual(
             list(plugin.get_operation_steps('terminate')),
-            [OperationStep(plugin.terminate, 'TestPlugin.terminate', plugin, (), ())],
+            [OperationStep(plugin.terminate,
+                           'TestPlugin.terminate', plugin, (), ())],
         )
 
     def test_ignore_private_and_magic_members(self):
@@ -167,11 +170,13 @@ class MagicPluginTest(unittest.TestCase):
 
         self.assertEqual(
             list(plugin.get_operation_steps('init')),
-            [OperationStep(module.init, 'magic plugin module sample.init', plugin, ('config',), ())]
+            [OperationStep(
+                module.init, 'magic plugin module sample.init', plugin, ('config',), ())]
         )
         self.assertEqual(
             list(plugin.get_operation_steps('terminate')),
-            [OperationStep(module.terminate, 'magic plugin module sample.terminate', plugin, (), ())]
+            [OperationStep(
+                module.terminate, 'magic plugin module sample.terminate', plugin, (), ())]
         )
 
     def test_module_plugin_attribute_forwarding(self):

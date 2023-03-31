@@ -46,7 +46,8 @@ class PluginManagerTest(unittest.TestCase):
 
         self.assertEqual(
             list(pm.get_operation_sequence('init')),
-            [OperationStep(plugins[0].init, '_TestPlugin1.init', plugins[0], (), ())]
+            [OperationStep(plugins[0].init, '_TestPlugin1.init',
+                           plugins[0], (), ())]
         )
 
         logger.warning.assert_not_called()
@@ -58,7 +59,8 @@ class PluginManagerTest(unittest.TestCase):
 
         self.assertEqual(
             list(pm.get_operation_sequence('init')),
-            [OperationStep(plugins[0].init, '_TestPlugin1.init', plugins[0], (), ())]
+            [OperationStep(plugins[0].init, '_TestPlugin1.init',
+                           plugins[0], (), ())]
         )
 
         logger.warning.assert_called_once()
@@ -81,9 +83,12 @@ class PluginManagerTest(unittest.TestCase):
         self.assertEqual(
             list(pm.get_operation_sequence('init')),
             [
-                OperationStep(plugins[2].init, '_TestPlugin3.init', plugins[2], (), ('_TestPlugin1.init',)),
-                OperationStep(plugins[0].init, '_TestPlugin1.init', plugins[0], (), ()),
-                OperationStep(plugins[1].init, '_TestPlugin2.init', plugins[1], ('_TestPlugin1.init',), ()),
+                OperationStep(plugins[2].init, '_TestPlugin3.init',
+                              plugins[2], (), ('_TestPlugin1.init',)),
+                OperationStep(plugins[0].init,
+                              '_TestPlugin1.init', plugins[0], (), ()),
+                OperationStep(plugins[1].init, '_TestPlugin2.init',
+                              plugins[1], ('_TestPlugin1.init',), ()),
             ]
         )
 

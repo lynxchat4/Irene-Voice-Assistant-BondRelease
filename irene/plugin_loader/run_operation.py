@@ -167,7 +167,8 @@ def call_all_parallel(steps: Iterable[OperationStep], *args, **kwargs):
         if callable(step.step):
             start_thread(step.step, str(step))
         else:
-            raise TypeError(f"Неподдерживаемый тип шага {step}: {type(step.step)}")
+            raise TypeError(
+                f"Неподдерживаемый тип шага {step}: {type(step.step)}")
 
     for t in threads:
         # простой вызов join() игнорирует KeyboardInterrupt

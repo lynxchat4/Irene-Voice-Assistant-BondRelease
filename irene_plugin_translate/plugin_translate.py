@@ -76,7 +76,8 @@ def _get_output_for_language(va: VAApiExt, language: LanguageDefinition) -> Text
                 MetaMatcher({label: True})
             )
 
-            va.say(f"Я не умею говорить {language.adverb_ru}, но могу написать")
+            va.say(
+                f"Я не умею говорить {language.adverb_ru}, но могу написать")
 
             return output
         except OutputChannelNotFoundError:
@@ -98,9 +99,11 @@ def _make_translation_handler(language_definition: LanguageDefinition) -> VACont
             return
 
         try:
-            translated = _provider.translate(text, language_definition.code, 'ru')
+            translated = _provider.translate(
+                text, language_definition.code, 'ru')
         except Exception:
-            _logger.exception(f"Ошибка при переводе на {language_definition.known_ru.nominative} язык")
+            _logger.exception(
+                f"Ошибка при переводе на {language_definition.known_ru.nominative} язык")
             va.say("Не удалось перевести")
         else:
             output.send(translated)

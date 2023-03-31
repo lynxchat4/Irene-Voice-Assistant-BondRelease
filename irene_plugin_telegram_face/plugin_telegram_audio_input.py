@@ -5,9 +5,9 @@ from logging import getLogger
 from os.path import join
 from typing import Optional, Callable
 
-from telebot import TeleBot
-from telebot.types import Message
-from vosk import Model, KaldiRecognizer
+from telebot import TeleBot  # type: ignore
+from telebot.types import Message  # type: ignore
+from vosk import Model, KaldiRecognizer  # type: ignore
 
 from irene.brain.abc import InboundMessage, OutputChannel
 from irene.brain.output_pool import OutputPoolImpl
@@ -70,7 +70,8 @@ class TelegramAudioInputPlugin(MagicPlugin):
                 f.write(downloaded_tele_file)
 
             try:
-                temp_dst_file_name = converter.convert(temp_src_file_name, "wav")
+                temp_dst_file_name = converter.convert(
+                    temp_src_file_name, "wav")
             except ConversionError:
                 self._logger.exception(
                     "Не удалось преобразовать файл голосового сообщения в формат WAV. "
@@ -97,13 +98,14 @@ class TelegramAudioInputPlugin(MagicPlugin):
             send_message: Callable[[InboundMessage], None],
             **_kwargs
     ):
-        converter = self._get_audio_converter(pm)
-
-        if converter is None:
+        if not (converter_ := self._get_audio_converter(pm)):
             self._logger.warning(
                 "Приём голосовых сообщений не доступен т.к. не установлен конвертер аудио-файлов."
             )
             return
+        else:
+            # Давайте поможем MyPy понять, что converter не None после этого if'а
+            converter = converter_
 
         @bot.message_handler(content_types=['voice'])
         def handle_voice_message(message: Message):
@@ -115,11 +117,13 @@ class TelegramAudioInputPlugin(MagicPlugin):
             self._logger.info("Распознано голосовое сообщение \"%s\"", text)
 
             outputs: list[OutputChannel] = call_all_as_wrappers(
-                pm.get_operation_sequence('telegram_add_message_reply_channels'),
+                pm.get_operation_sequence(
+                    'telegram_add_message_reply_channels'),
                 [],
                 message,
                 bot,
                 pm,
             )
 
-            send_message(TelegramMessage(text, message, bot, OutputPoolImpl(outputs)))
+            send_message(TelegramMessage(
+                text, message, bot, OutputPoolImpl(outputs)))

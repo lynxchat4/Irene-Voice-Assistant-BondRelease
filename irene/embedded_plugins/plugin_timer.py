@@ -5,7 +5,7 @@ from heapq import heappush, heappop
 from queue import Queue, Empty
 from threading import Thread
 from time import sleep
-from typing import Callable
+from typing import Callable, TypedDict
 
 import irene.utils.num_to_text_ru as num_to_text
 from irene import VAApiExt
@@ -45,7 +45,8 @@ class _Timer(Thread):
             if len(self._timers) == 0:
                 timeout = None
             else:
-                timeout = (self._timers[0][0] - datetime.utcnow()).total_seconds()
+                timeout = (self._timers[0][0] -
+                           datetime.utcnow()).total_seconds()
 
             try:
                 self._q.get(block=True, timeout=timeout)()
@@ -64,7 +65,11 @@ class TimerPlugin(MagicPlugin):
     name = 'plugin_timer'
     version = '7.0.0'
 
-    config = {
+    class _Config(TypedDict):
+        wavRepeatTimes: int
+        wavPath: str
+
+    config: _Config = {
         'wavRepeatTimes': 2,
         'wavPath': '{irene_path}/embedded_plugins/media/timer.wav',
     }
@@ -97,7 +102,8 @@ class TimerPlugin(MagicPlugin):
 
             va.say(f"{text} прошло")
 
-        self._timer.add(timedelta(seconds=time), partial(va.submit_active_interaction, done_interaction))
+        self._timer.add(timedelta(seconds=time), partial(
+            va.submit_active_interaction, done_interaction))
 
         va.say(f"поставила таймер на {text}")
 

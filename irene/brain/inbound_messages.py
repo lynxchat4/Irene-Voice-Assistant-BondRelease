@@ -51,7 +51,8 @@ class PartialTextMessage(InboundMessage):
     ):
         self._original = original.get_original()
         self._text = convert_to_canonical(text_slice)
-        self._meta = original.meta if meta_overrides is None else {**original.meta, **meta_overrides}
+        self._meta = original.meta if meta_overrides is None else {
+            **original.meta, **meta_overrides}
 
     def get_text(self) -> str:
         return self._text

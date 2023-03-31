@@ -73,7 +73,8 @@ class ConsoleFace(MagicPlugin):
         if not self.config['enabled']:
             return
 
-        brain = call_all_as_wrappers(pm.get_operation_sequence('get_brain'), None, pm)
+        brain = call_all_as_wrappers(
+            pm.get_operation_sequence('get_brain'), None, pm)
 
         if brain is None:
             raise Exception("Не удалось найти мозг.")

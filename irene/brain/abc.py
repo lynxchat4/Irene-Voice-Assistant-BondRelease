@@ -86,7 +86,8 @@ class OutputChannelPool(ABC):
             OutputChannelNotFoundError - если подходящих каналов не найдено
         """
         type_predicate: Predicate[OutputChannel] = \
-            Predicate.true() if typ is OutputChannel else Predicate.from_callable(typ.__instancecheck__)
+            Predicate.true() if typ is OutputChannel else Predicate.from_callable(
+                typ.__instancecheck__)
 
         return self.query_channels(type_predicate & predicate)  # type: ignore
 
@@ -338,7 +339,9 @@ class VAApiExt(VAApi, ABC):
         ch: TextOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
-        ch, *_ch = self.get_outputs_preferring_relevant(TextOutputChannel)  # type: ignore
+        ch, *_ch = self.get_outputs_preferring_relevant(
+            TextOutputChannel  # type: ignore
+        )
 
         ch.send(text, **kwargs)
 
@@ -382,7 +385,9 @@ class VAApiExt(VAApi, ABC):
         ch: AudioOutputChannel
 
         # Type check doesn't work properly, https://github.com/python/mypy/issues/5374 may be related
-        ch, *_ch = self.get_outputs_preferring_relevant(AudioOutputChannel)  # type: ignore
+        ch, *_ch = self.get_outputs_preferring_relevant(
+            AudioOutputChannel  # type: ignore
+        )
 
         ch.send_file(file_path, **kwargs)
 
@@ -526,7 +531,8 @@ T = TypeVar('T')
 VAContextSourcesDict = dict[str, Any]
 
 # yield type, send type, return type
-VAContextGenerator = Generator[Optional[Union[str, Tuple[str, float]]], str, Optional[str]]
+VAContextGenerator = Generator[Optional[Union[str,
+Tuple[str, float]]], str, Optional[str]]
 
 VAContextSource = Union[
     VAContext,
