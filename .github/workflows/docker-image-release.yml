@@ -1,9 +1,8 @@
-name: Docker build
+name: Release docker build
 
 on:
-  push:
-    branches:
-      - "master"
+  release:
+    types: "published"
 
 jobs:
   docker:
@@ -20,10 +19,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: alexeybond/irene
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: alexeybond/irene:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
