@@ -50,6 +50,8 @@ _logger = getLogger(name)
 
 
 class _SoundDeviceAudioOutput(AudioOutputChannel):
+    __slots__ = ()
+
     def check(self):
         sounddevice.query_devices(config['deviceId'], 'output')
 

@@ -1,6 +1,6 @@
 import unittest
 
-from irene.utils.predicate import Predicate
+from irene.utils.predicate import Predicate, FalsePredicate, TruePredicate
 
 gt_1: Predicate[float] = Predicate.from_callable(lambda it: it > 1)
 gt_5: Predicate[float] = Predicate.from_callable(lambda it: it > 5)
@@ -50,6 +50,10 @@ class PredicateTest(unittest.TestCase):
         self.assertTrue(pr(-1))
         self.assertTrue(pr(10))
         self.assertFalse(pr(4))
+
+    def test_invert_constants(self):
+        self.assertIsInstance(~Predicate.true(), FalsePredicate)
+        self.assertIsInstance(~Predicate.false(), TruePredicate)
 
 
 if __name__ == '__main__':

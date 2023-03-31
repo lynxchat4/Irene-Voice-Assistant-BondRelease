@@ -8,6 +8,13 @@ OptionalPredicateLike = Optional[PredicateLike]
 
 
 class Predicate(ABC, Generic[T]):
+    """
+    Предикат - функция возвращающая булево значение, зависящее от входящего аргумента.
+
+    В отличие от обычных функций, экземпляры этого класса поддерживают дополнительные операторы для комбинирования
+    нескольких предикатов.
+    """
+
     @abstractmethod
     def __call__(self, arg: T) -> bool:
         ...
@@ -29,6 +36,10 @@ class Predicate(ABC, Generic[T]):
 
     @staticmethod
     def from_callable(cb: PredicateLike) -> 'Predicate[T]':
+        """
+        Превращает ``callable`` в ``Predicate``. Если переданный ``callable`` уже является ``Predicate``, то он
+        возвращается без изменений.
+        """
         if isinstance(cb, Predicate):
             return cb
 
@@ -36,10 +47,16 @@ class Predicate(ABC, Generic[T]):
 
     @staticmethod
     def true() -> 'Predicate[T]':
+        """
+        Возвращает предикат, который всегда истинен.
+        """
         return TruePredicate()
 
     @staticmethod
     def false() -> 'Predicate[T]':
+        """
+        Возвращает предикат, который всегда ложен.
+        """
         return FalsePredicate()
 
 
@@ -53,6 +70,9 @@ class TruePredicate(Predicate):
     def __or__(self, other: OptionalPredicateLike) -> Predicate[T]:
         return self
 
+    def __invert__(self):
+        return FalsePredicate()
+
 
 class FalsePredicate(Predicate):
     def __call__(self, arg: T) -> bool:
@@ -63,6 +83,9 @@ class FalsePredicate(Predicate):
 
     def __or__(self, other: OptionalPredicateLike) -> Predicate[T]:
         return self if other is None else Predicate.from_callable(other)
+
+    def __invert__(self):
+        return TruePredicate()
 
 
 class CallablePredicate(Predicate):

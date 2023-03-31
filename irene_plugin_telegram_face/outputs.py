@@ -1,7 +1,7 @@
 from typing import Any, Optional, Iterable
 
-from telebot import TeleBot
-from telebot.types import Chat, Message
+from telebot import TeleBot  # type: ignore
+from telebot.types import Chat, Message  # type: ignore
 
 from irene.brain.abc import TextOutputChannel, AudioOutputChannel
 from irene.constants.labels import pure_text_channel_labels
@@ -160,7 +160,7 @@ class VoiceChannel(AudioChannel):
             converter: AudioConverter,
     ):
         super().__init__(bot, chat)
-        self._converter = converter
+        self._converter: AudioConverter = converter
 
     def send_file(
             self,

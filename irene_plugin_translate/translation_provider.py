@@ -3,6 +3,8 @@ from typing import Optional
 
 
 class TranslationProvider(ABC):
+    __slots__ = ()
+
     """
     Интерфейс фасада сервиса, осуществляющего перевод текста между разными языками.
     """

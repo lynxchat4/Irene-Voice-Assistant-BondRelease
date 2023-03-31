@@ -8,6 +8,9 @@ GenderCode = Literal[
 
 
 class GenderDefinition(NamedTuple):
+    """
+    Описывает гендер (род).
+    """
     code: GenderCode
 
     @property

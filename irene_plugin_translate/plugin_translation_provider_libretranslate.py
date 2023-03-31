@@ -38,6 +38,8 @@ _logger = getLogger(name)
 
 
 class _LibretranslateTranslationProvider(TranslationProvider):
+    __slots__ = ()
+
     def translate(
             self,
             text: str,
