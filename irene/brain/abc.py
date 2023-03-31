@@ -532,7 +532,7 @@ VAContextSourcesDict = dict[str, Any]
 
 # yield type, send type, return type
 VAContextGenerator = Generator[Optional[Union[str,
-Tuple[str, float]]], str, Optional[str]]
+                                              Tuple[str, float]]], str, Optional[str]]
 
 VAContextSource = Union[
     VAContext,

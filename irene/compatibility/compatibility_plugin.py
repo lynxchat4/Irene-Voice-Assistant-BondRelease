@@ -148,7 +148,7 @@ class _OriginalPlugin(MagicPlugin):
 
             if callable(first) and getattr(first, '__module__', None) == self._module.__name__:
                 first_cast: Callable[[VACore, str, Any],
-                None] = first  # type: ignore
+                                     None] = first  # type: ignore
                 prev = (self._wrap_context_fn_with_args(first_cast), rest[0])
 
         return nxt(prev, *args, **kwargs)

@@ -62,7 +62,7 @@ class TelegramPlaintextIOPlugin(MagicPlugin):
             **kwargs
     ):
         send_reply = self.config['replyInPrivate' if message.chat.type ==
-                                                     'private' else 'replyInGroups']
+                                 'private' else 'replyInGroups']
 
         if send_reply:
             channels.append(ReplyTextChannel(bot, message))

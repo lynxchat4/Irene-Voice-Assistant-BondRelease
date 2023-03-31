@@ -105,7 +105,7 @@ class DialogTestCase(TestCase):
             raise AssertionError(
                 f'Ожидался ответ, соответствующий шаблону:\n\t"{pattern}"\n' +
                 (f'но получен следующий ответ:\n\t"{reply}"' if reply !=
-                                                                '' else 'но ответ не получен')
+                 '' else 'но ответ не получен')
             )
 
     def delay(self, duration=1.0):

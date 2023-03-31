@@ -37,7 +37,7 @@ class BrainPlugin(MagicPlugin):
     }
 
     _ErrorPhraseKeys = Literal['unknownRootCommandReply',
-    'ambiguousRootCommandReply']
+                               'ambiguousRootCommandReply']
 
     def __init__(self):
         super().__init__()
