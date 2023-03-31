@@ -1,4 +1,8 @@
-Это ((пока) незавершённый) форк/ремейк оригинальной Ирины.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Core tests](https://github.com/AlexeyBond/Irene-Voice-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexeyBond/Irene-Voice-Assistant/actions/workflows/ci.yml)
+[![Core coverage Status](https://coveralls.io/repos/github/AlexeyBond/Irene-Voice-Assistant/badge.svg)](https://coveralls.io/github/AlexeyBond/Irene-Voice-Assistant)
+
+Это форк/ремейк [оригинальной Ирины](https://github.com/janvarev/Irene-Voice-Assistant).
 
 ## Запуск
 
@@ -101,8 +105,9 @@ python3 -m irene --help
 - "дата", "время"
 - "брось/подбрось монету/кость"
 - "(поставь) таймер"
-- "скажи/озвучь/буфер" (только с веб-клиентом)
+- "скажи/озвучь/буфер"
 - "игра больше меньше"
+- "как по-<язык> будет <фраза>"/"переведи на <язык> <фраза>"
 
 См. [embedded_plugins](./irene/embedded_plugins).
 
