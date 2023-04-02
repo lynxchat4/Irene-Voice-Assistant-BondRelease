@@ -1,11 +1,11 @@
 from functools import partial
-from typing import Any, Optional, Callable, TypedDict, Literal
+from typing import Any, Optional, Callable, TypedDict, Literal, Union
 
 from irene import VAContext, VAApiExt, construct_context, VAContextSource
 from irene.brain.brain import BrainImpl
 from irene.brain.command_tree import VACommandTree
 from irene.brain.contexts import CommandTreeContext, UNKNOWN_COMMAND_SPECIAL_KEY, AMBIGUOUS_COMMAND_SPECIAL_KEY, \
-    TriggerPhraseContext
+    TriggerPhraseContext, CommandErrorInterceptionContext
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin, step_name, operation, after, before
 from irene.plugin_loader.run_operation import call_all_as_wrappers
@@ -19,6 +19,7 @@ class BrainPlugin(MagicPlugin):
         triggerPhrases: list[str]
         unknownRootCommandReply: str
         ambiguousRootCommandReply: str
+        rootCommandErrorReply: Union[str, list[str]]
         unknownCommandReply: str
         ambiguousCommandReply: str
         defaultTimeout: float
@@ -29,6 +30,7 @@ class BrainPlugin(MagicPlugin):
         'triggerPhrases': ["ирина", "ирины", "ирину"],
         'unknownRootCommandReply': "Извини, я не поняла",
         'ambiguousRootCommandReply': "Извини, я не совсем поняла",
+        'rootCommandErrorReply': "Упс, что-то пошло не так.",
         'unknownCommandReply': "Не поняла...",
         'ambiguousCommandReply': "Не совсем поняла...",
         'defaultTimeout': 10.0,
@@ -36,8 +38,7 @@ class BrainPlugin(MagicPlugin):
         'timeoutCheckInterval': 1.0,
     }
 
-    _ErrorPhraseKeys = Literal['unknownRootCommandReply',
-                               'ambiguousRootCommandReply']
+    _ErrorPhraseKeys = Literal['unknownRootCommandReply', 'ambiguousRootCommandReply']
 
     def __init__(self):
         super().__init__()
@@ -119,7 +120,10 @@ class BrainPlugin(MagicPlugin):
         Создаёт основной экземпляр Мозга.
         """
         root_ctx: VAContext = call_all_as_wrappers(
-            pm.get_operation_sequence('create_root_context'), None, pm)
+            pm.get_operation_sequence('create_root_context'),
+            construct_context(partial(self._say_configured, 'unknownRootCommandReply')),
+            pm
+        )
         self._brain = BrainImpl(
             main_context=root_ctx,
             config=self.config,
@@ -152,20 +156,18 @@ class BrainPlugin(MagicPlugin):
     def create_root_context(
             self,
             nxt: Callable,
-            prev: Optional[VAContext],
+            prev: VAContext,
             pm: PluginManager,
             *args, **kwargs
     ):
         """
         Создаёт корневой контекст, добавляя в него все команды, предоставляемые плагинами.
 
-        Если другой корневой контекст был создан до этого шага, то ему будут переданы все нераспознанные команды.
-        Иначе на нераспознанные команды ассистент будет отвечать настроенными фразами.
+        Нераспознанные команды будут передаваться контексту, полученному с предыдущего шага.
         """
         tree: VACommandTree[VAContext] = VACommandTree()
 
-        unknown_command_context = prev or partial(
-            self._say_configured, 'unknownRootCommandReply')
+        unknown_command_context = prev
         ambiguous_command_context = partial(
             self._say_configured, 'ambiguousRootCommandReply')
 
@@ -218,21 +220,44 @@ class BrainPlugin(MagicPlugin):
     def add_trigger_phrase(
             self,
             nxt: Callable,
-            prev: Optional[VAContext],
+            prev: VAContext,
             *args, **kwargs,
     ):
         """
         Заворачивает корневой контекст в ``TriggerPhraseContext``, требующий наличия настроенной фразы во входящем
         сообщении для обработки сообщения.
         """
-        if prev is None:
-            raise ValueError()
 
         return nxt(
             TriggerPhraseContext(
                 [phrase.split(' ')
                  for phrase in self.config['triggerPhrases']],
                 prev,
+            ),
+            *args, **kwargs
+        )
+
+    @operation('create_root_context')
+    @step_name('intercept_errors')
+    @after('add_trigger_phrase')
+    def intercept_root_context_errors(
+            self,
+            nxt: Callable,
+            prev: VAContext,
+            *args, **kwargs
+    ):
+        """
+        Добавляет сообщения об ошибках, возникающих при выполнении команд, оборачивая корневой контекст в
+        CommandErrorInterceptionContext.
+        """
+
+        config_replies = self.config['rootCommandErrorReply']
+        replies = [config_replies] if isinstance(config_replies, str) else config_replies
+
+        return nxt(
+            CommandErrorInterceptionContext(
+                prev,
+                replies,
             ),
             *args, **kwargs
         )

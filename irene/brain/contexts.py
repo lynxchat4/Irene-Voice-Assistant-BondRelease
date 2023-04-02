@@ -1,3 +1,4 @@
+import random
 from functools import partial
 from inspect import isgenerator, isclass
 from logging import getLogger
@@ -450,6 +451,27 @@ class BaseContextWrapper(VAContext):
 
     def get_timeout(self, default: float) -> float:
         return self._wrapped.get_timeout(default)
+
+
+class CommandErrorInterceptionContext(BaseContextWrapper):
+    __slots__ = '_phrases'
+
+    def __init__(self, wrapped: VAContext, error_phrases: list[str]):
+        assert len(error_phrases) > 0
+
+        super().__init__(wrapped)
+        self._phrases = error_phrases
+
+    def handle_command(self, va: VAApi, message: InboundMessage) -> Optional[VAContext]:
+        try:
+            return super().handle_command(va, message)
+        except Exception:
+            try:
+                va.say(random.choice(self._phrases))
+            except Exception:
+                pass
+
+            raise
 
 
 class TimeoutOverrideContext(BaseContextWrapper):
