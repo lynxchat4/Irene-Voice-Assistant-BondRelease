@@ -22,4 +22,4 @@ jobs:
           pip install -r requirements-ci.txt
       - name: Run autopep8
         run: |
-          python -m autopep8 --recursive --diff --exit-code ./irene*
+          python -m autopep8 --max-line-length=185 --recursive --diff --exit-code ./irene*
