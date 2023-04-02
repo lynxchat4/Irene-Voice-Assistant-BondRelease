@@ -62,6 +62,8 @@ class _StubRuntime(MagicPlugin):
                 if hasattr(step.plugin, 'config'):
                     setattr(step.plugin, 'config',
                             self._configs[step.plugin.name])
+            else:
+                self._configs[step.plugin.name] = step.step
 
         for step in pm.get_operation_sequence('receive_config'):
             if step.plugin.name in self._configs:
@@ -76,6 +78,8 @@ class _StubRuntime(MagicPlugin):
                 if hasattr(step.plugin, 'config'):
                     setattr(step.plugin, 'config',
                             self._configs[step.plugin.name])
+            else:
+                self._configs[step.plugin.name] = step.step
 
         for step in plugin.get_operation_steps('receive_config'):
             if step.plugin.name in self._configs:

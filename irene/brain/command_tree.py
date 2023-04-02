@@ -164,6 +164,10 @@ class VACommandTree(Generic[T]):
                 команды в виде вложенных словарей
             context_constructor:
                 функция, преобразующая значение из словаря в значение, хранимое в дереве
+
+        Raises:
+            ConflictingCommandsException - если одна из добавляемых команд совпадает с другой добавляемой или ранее
+                                           добавленой командой
         """
         self._root.add_dict(commands, context_constructor)
 
