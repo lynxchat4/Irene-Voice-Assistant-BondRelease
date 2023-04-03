@@ -9,18 +9,6 @@ RUN npm ci
 COPY ./frontend .
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM curlimages/curl:7.85.0 as silero-downloader
-
-WORKDIR /home/downloader/models
-
-RUN curl https://models.silero.ai/models/tts/ru/v3_1_ru.pt -o ./c9e311e020562111e5414ff93d47e0a1-v3_1_ru.pt
-
-FROM --platform=$BUILDPLATFORM curlimages/curl:7.85.0 as vosk-downloader
-
-WORKDIR /home/downloader/models
-
-RUN curl https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip -o ./c611af587fcbdacc16bc7a1c6148916c-vosk-model-small-ru-0.22.zip
-
 FROM --platform=$BUILDPLATFORM python:3.9-slim-bullseye as ssl-generator
 
 WORKDIR /home/generator/ssl
@@ -44,6 +32,10 @@ RUN ln -s /bin/tar /usr/sbin/tar
 RUN --mount=type=cache,target=/var/cache,sharing=locked apt update && apt install -y ffmpeg libportaudio2 libatomic1
 
 RUN groupadd --gid 1001 python && useradd --create-home python --uid 1001 --gid python
+
+# Позволяем приложению читать и писать в папку /irene даже если в неё ничего не смонтировано
+RUN mkdir /irene && chown 1001:1001 /irene
+
 USER python:python
 WORKDIR /home/python
 
@@ -58,8 +50,7 @@ COPY irene_plugin_local_speech_face ./irene_plugin_local_speech_face
 COPY docker-config ./config
 
 COPY --link --from=frontend-builder /home/frontend/dist/ ./irene_plugin_web_face_frontend/frontend-dist/
-COPY --link --from=silero-downloader /home/downloader/models/ ./silero-models/
-COPY --link --chown=1001:1001 --from=vosk-downloader /home/downloader/models/ ./vosk-models/
+COPY --link --chown=1001:1001 ./resources .
 COPY --link --chown=1001:1001 --from=ssl-generator /home/generator/ssl/ ./ssl/
 
 EXPOSE 8086

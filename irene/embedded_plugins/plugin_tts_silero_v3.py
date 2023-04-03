@@ -7,14 +7,14 @@ from functools import cache
 from hashlib import md5
 from logging import getLogger
 from os.path import basename, dirname
-from typing import Optional, Any, TypedDict
+from typing import Optional, Any, TypedDict, Iterable
 from urllib.parse import urlparse
 
 import torch
 
 from irene.face.abc import FileWritingTTS, TTSResultFile
 from irene.face.tts_helpers import create_disposable_tts_result_file
-from irene.plugin_loader.file_patterns import pick_random_file, first_substitution
+from irene.plugin_loader.file_patterns import first_substitution, match_files
 from irene.plugin_loader.utils.snapshot_hash import snapshot_hash
 from irene.utils.metadata import MetadataMapping
 
@@ -51,15 +51,19 @@ config_comment = """
 _logger = getLogger(name)
 
 
-def _download_model_file(url: str) -> str:
+def _get_model_files(url: str) -> Iterable[str]:
+    """
+    Возвращает пути к файлам, в которых следует искать модель, скачанную по переданному url'у.
+    """
     parsed_url = urlparse(url)
     file_basename = f'{md5(url.encode("utf-8")).hexdigest()}-{basename(parsed_url.path)}'
-    try:
-        return pick_random_file(config['model_search_paths'], override_vars=dict(file_name=file_basename))
-    except FileNotFoundError:
-        _logger.info(
-            f"Файл модели '{file_basename}' не найден. Пытаюсь скачать.")
 
+    # Сначала перебираем все подходящие по названию существующие файлы.
+    # Ранее могли быть скачаны битые файлы, модель из которых загрузить не получится, обнаружив такой файл, вызывающая
+    # сторона попросит у _get_model_files следующий вариант.
+    yield from match_files(config['model_search_paths'], override_vars=dict(file_name=file_basename))
+
+    # Потом пытаемся скачать файл
     target_path = first_substitution(
         config['model_storage_path'], override_vars=dict(file_name=file_basename))
     os.makedirs(dirname(target_path), exist_ok=True)
@@ -68,7 +72,7 @@ def _download_model_file(url: str) -> str:
 
     _logger.info(f"Файл модели скачан в '{target_path}'.")
 
-    return target_path
+    yield target_path
 
 
 @cache
@@ -80,14 +84,26 @@ def _get_device() -> torch.device:
 
 
 @cache
-def _load_model(file: str) -> Any:
+def _load_model_from_file(file_path: str) -> Any:
     model = torch.package \
-        .PackageImporter(file) \
+        .PackageImporter(file_path) \
         .load_pickle("tts_models", "model")
+
+    _logger.debug("Загружена модель из %s", file_path)
 
     model.to(_get_device())
 
     return model
+
+
+def _load_model(model_url: str) -> Any:
+    for file_path in _get_model_files(model_url):
+        try:
+            return _load_model_from_file(file_path)
+        except Exception:
+            _logger.exception("Не удалось загрузить модель из %s", file_path)
+
+    raise Exception(f"Не удалось загрузить модель из {model_url}")
 
 
 def _warmup_model(model, voice_settings: dict[str, Any]):
@@ -123,7 +139,7 @@ def _warmup_model(model, voice_settings: dict[str, Any]):
 def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
     model_url = instance_config['model_url']
 
-    model = _load_model(_download_model_file(model_url))
+    model = _load_model(model_url)
 
     full_settings = instance_config.get('silero_settings', {})
 
