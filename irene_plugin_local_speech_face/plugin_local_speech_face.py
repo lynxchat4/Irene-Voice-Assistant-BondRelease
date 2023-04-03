@@ -17,7 +17,7 @@ class LocalSpeechFacePlugin(MagicPlugin):
     """
 
     name = 'face_local'
-    version = '0.2.0'
+    version = '0.2.1'
 
     _logger = getLogger(name)
 
@@ -65,6 +65,15 @@ class LocalSpeechFacePlugin(MagicPlugin):
         self._input: Optional[LocalInput] = None
         self._outputs: Optional[OutputChannelPool] = None
         self._stop: Optional[Callable[[], None]] = None
+
+    def receive_config(self, config: _Config, *_args, **_kwargs):
+        for output_conf in config['outputs']:
+            # В версии 0.6.0 тип канала вывода, используемый по-умолчанию (tts-file) был удалён.
+            if output_conf.get('type') == 'tts-file':
+                self._logger.info("Обновляю устаревшую конфигурацию канала вывода (tts-file -> tts)")
+                output_conf.clear()
+                output_conf['type'] = 'tts'
+                output_conf['profile_selector'] = {}
 
     @after('create_brain')
     def init(self, pm: PluginManager, *_args, **_kwargs):
