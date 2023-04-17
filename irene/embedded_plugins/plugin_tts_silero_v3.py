@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 import torch
 
+import irene.utils.all_num_to_text as all_num_to_text
 from irene.face.abc import FileWritingTTS, TTSResultFile
 from irene.face.tts_helpers import create_disposable_tts_result_file
 from irene.plugin_loader.file_patterns import first_substitution, match_files
@@ -19,7 +20,7 @@ from irene.plugin_loader.utils.snapshot_hash import snapshot_hash
 from irene.utils.metadata import MetadataMapping
 
 name = 'plugin_tts_silero_v3'
-version = '0.3.0'
+version = '0.3.1'
 
 
 class _Config(TypedDict):
@@ -145,9 +146,14 @@ def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
 
     _warmup_model(model, full_settings)
 
+    all_num_to_text.load_language('ru-RU')
+
     class SileroV3TTS(FileWritingTTS):
         def say_to_file(self, text: str, file_base_path: Optional[str] = None, **kwargs) -> TTSResultFile:
             file = create_disposable_tts_result_file(file_base_path, '.wav')
+
+            # TODO: Это не будет работать с другими языками кроме русского. Нужно более универсальное решение.
+            text = all_num_to_text.all_num_to_text(text)
 
             model.save_wav(
                 audio_path=file.get_full_path(),
