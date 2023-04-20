@@ -13,6 +13,10 @@ body {
 
     --color-icon-button-default: #999;
     --color-icon-button-hover: #777;
+
+    --color-link: #09c;
+
+    font-family: Arial, Helvetica, sans-serif;
 }
 
 .icon-button, .icon-button:visited {

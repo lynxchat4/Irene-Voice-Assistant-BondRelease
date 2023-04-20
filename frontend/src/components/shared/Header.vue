@@ -5,6 +5,10 @@ import MicrophoneStatus from './MicrophoneStatus.vue';
 
 import SettingsIcon from '~icons/material-symbols/settings'
 import BackIcon from '~icons/material-symbols/arrow-back'
+import AboutIcon from '~icons/material-symbols/help-outline-rounded'
+import { inject } from 'vue';
+
+const hideConfiguration = (inject('frontendConfiguration') as any).hideConfiguration;
 </script>
 
 <template>
@@ -17,8 +21,11 @@ import BackIcon from '~icons/material-symbols/arrow-back'
         <MicrophoneStatus />
       </div>
       <div class="right">
-        <RouterLink to="/config" title="Настройки" class="icon-button settings">
+        <RouterLink to="/config" title="Настройки" class="icon-button settings" v-if="!hideConfiguration">
           <SettingsIcon />
+        </RouterLink>
+        <RouterLink to="/about" title="О программе" class="icon-button about">
+          <AboutIcon />
         </RouterLink>
         <RouterLink to="/" title="Назад" class="icon-button back">
           <BackIcon />

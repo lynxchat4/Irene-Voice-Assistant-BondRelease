@@ -2,22 +2,27 @@ from logging import getLogger
 from os.path import join, dirname, isdir, isfile
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
+from irene.plugin_loader.file_patterns import match_files
 from irene.plugin_loader.magic_plugin import after
 
 name = 'web_face_frontend'
-version = '0.0.1'
+version = '0.1.0'
 
-# Сам плагин не использует этот конфиг, однако его использует JS, выполняющийся в браузере - запрашивая его через API
-# менеджера конфигураций.
+# Большую часть полей использует не сам плагин, а JS, выполняющийся в браузере - запрашивая его через API менеджера
+# конфигураций.
 config: dict[str, Any] = {
     'audioInputEnabled': True,
     'audioOutputEnabled': True,
     'preferStreamingInput': True,
     'microphoneSampleRate': 44100,
     'autoReload': True,
+    'hideConfiguration': False,
+    'customCssPaths': ['{irene_home}/frontend/*.css'],
+    'customCss': '\n\n',
 }
 
 config_comment = """
@@ -32,6 +37,11 @@ config_comment = """
                             самостоятельно
 - `microphoneSampleRate`  - частота дискретизации аудио при прослушивании микрофона
 - `autoReload`            - автоматически обновляет страницу при изменении настроек браузерного интерфейса
+- `hideConfiguration`     - скрывает страницу настроек в веб-интерфейсе.
+                            Важно: включение этой опции не влияет на возможность изменения настроек через REST API, а
+                            только скрывает графический интерфейс на веб-странице.
+- `customCssPaths`        - шаблоны путей к файлам, содержащим пользовательские CSS-стили.
+- `customCss`             - пользовательские CSS-стили.
 """
 
 _DIST_DIRS = [
@@ -56,3 +66,18 @@ def register_fastapi_routes(app: FastAPI, *_args, **_kwargs):
         html=True,
     )
     app.mount('/', static_files)
+
+
+def register_fastapi_endpoints(router: APIRouter, *_args, **_kwargs):
+    @router.get('/custom-styles.css')
+    def get_custom_styles():
+        css_chunks = [config['customCss']]
+
+        for file_path in sorted(match_files(config['customCssPaths'])):
+            with open(file_path, 'r') as file:
+                css_chunks.append(file.read())
+
+        return Response(
+            '\n'.join(css_chunks),
+            media_type='text/css',
+        )

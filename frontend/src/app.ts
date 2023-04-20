@@ -4,6 +4,7 @@ import { interpret } from 'xstate';
 import App from './App.vue'
 import ConfigsPageVue from './components/config/ConfigsPage.vue';
 import DialogPageVue from './components/dialog/DialogPage.vue';
+import AboutPageVue from './components/about/AboutPage.vue';
 import HeaderTitleVue from './components/ui/HeaderTitle.vue';
 import { connectionStateMachine, type ProtocolRequirements } from './components/dialog/sm-connection';
 import { textInputMachine } from './components/dialog/sm-input-text';
@@ -24,6 +25,7 @@ const FrontendConfig = z.object({
     audioInputEnabled: z.boolean().default(true),
     audioOutputEnabled: z.boolean().default(true),
     microphoneSampleRate: z.number(),
+    hideConfiguration: z.boolean().default(false),
 });
 
 const loadConfig: () => Promise<z.TypeOf<typeof FrontendConfig>> = () => new Promise(resolve => {
@@ -94,9 +96,11 @@ const getProtocolRequirements = ({
 export const initApplication = async () => {
     const config = await loadConfig();
 
-    const { microphoneSampleRate, audioInputEnabled, audioOutputEnabled } = config;
+    const { microphoneSampleRate, hideConfiguration } = config;
 
     const app = createApp(App);
+
+    app.provide('frontendConfiguration', config);
 
     const eventBus = new EventBus();
     app.provide(eventBusKey, eventBus);
@@ -204,7 +208,7 @@ export const initApplication = async () => {
                     },
                 },
             },
-            {
+            ...(hideConfiguration ? [] : [{
                 path: '/config',
                 components: {
                     main: ConfigsPageVue,
@@ -213,6 +217,18 @@ export const initApplication = async () => {
                 props: {
                     heading: {
                         text: 'Настройки',
+                    },
+                },
+            }]),
+            {
+                path: '/about',
+                components: {
+                    main: AboutPageVue,
+                    heading: HeaderTitleVue,
+                },
+                props: {
+                    heading: {
+                        text: 'О программе',
                     },
                 },
             },
