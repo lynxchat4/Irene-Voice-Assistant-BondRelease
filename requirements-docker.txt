@@ -22,4 +22,4 @@ vosk~=0.3.7
 
 # Локальные запись и воспроизведение звука
 sounddevice~=0.4.4
-soundfile~=0.10.3.post1
+soundfile~=0.12.1

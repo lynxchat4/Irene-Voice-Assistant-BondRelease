@@ -1,19 +1,30 @@
 import subprocess
 from logging import getLogger
-from os import stat
-from os.path import isfile
-from typing import Optional
+from typing import Optional, TypedDict
 
 from irene.plugin_loader.magic_plugin import step_name
 from irene.utils.audio_converter import ConversionError, AudioConverter
 from irene.utils.executable_files import is_executable, get_executable_path
 
 name = 'audio_converter_ffmpeg'
-version = '0.1.0'
+version = '0.2.0'
 
-config = {
+
+class _Config(TypedDict):
+    forceFFMpegPath: Optional[str]
+
+
+config: _Config = {
     'forceFFMpegPath': None,
 }
+
+config_comment = """
+Настройки конвертирования аудио-файлов при помощи ffmpeg.
+
+Параметры:
+- `forceFFMpegPath`   - Путь к исполняемому файлу ffmpeg.
+                        Если путь не установлен или некорректен, то плагин попытается искать ffmpeg в `$PATH`.
+"""
 
 _logger = getLogger(name)
 
@@ -37,27 +48,14 @@ class _AudioConverterImpl(AudioConverter):
     def __init__(self, ffmpeg_path: str):
         self._ffmpeg_path = ffmpeg_path
 
-    def convert(self, file: str, to_format: str) -> str:
-        if not isfile(file):
-            raise ValueError(f"{file} не является файлом")
-
-        src_stats = stat(file)
-        dst_path = self.get_converted_file_path(file, to_format)
-
-        if isfile(dst_path) and stat(dst_path).st_mtime >= src_stats.st_mtime:
-            _logger.debug(
-                "Конвертированный файл %s всё ещё актуален, не буду его перезаписывать.",
-                dst_path,
-            )
-            return dst_path
-
+    def convert_to(self, file: str, dst_file: str, to_format: str):
         try:
             command = [
                 self._ffmpeg_path,
                 '-hide_banner',
                 '-y',
                 '-i', file,
-                dst_path,
+                dst_file,
             ]
 
             _logger.debug("%s", command)
@@ -73,14 +71,12 @@ class _AudioConverterImpl(AudioConverter):
                 "Вывод %s при преобразовании %s в %s:\n%s",
                 self._ffmpeg_path,
                 file,
-                dst_path,
+                dst_file,
                 e.output,
             )
             raise ConversionError(
-                f"Вызов ffmpeg для конвертирования {file} в {dst_path} завершился с ошибкой (код {e.returncode})"
+                f"Вызов ffmpeg для конвертирования {file} в {dst_file} завершился с ошибкой (код {e.returncode})"
             )
-
-        return dst_path
 
 
 def _create_ffmpeg_converter() -> Optional[AudioConverter]:

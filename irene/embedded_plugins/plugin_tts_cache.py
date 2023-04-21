@@ -84,19 +84,32 @@ def _find_existing_file(base_name: str) -> Path:
     Raises:
         FileNotFoundError - если подходящего файла не найдено
     """
+    # В кеше может лежать несколько версий файла - оригинальный файл, созданный TTS и его варианты, преобразованные в
+    # другие форматы AudioConverter'ом.
     matching = list(_ensure_cache_dir().glob(f'{base_name}.*'))
 
     if len(matching) == 0:
         raise FileNotFoundError()
 
+    time = datetime.now().timestamp()
+
     for file_path in matching:
         # Нельзя использовать file_path.touch() так как он создаст файл если он был только что удалён потоком очистки
-        os.utime(file_path)
+        os.utime(file_path, (time, time))
 
+    # Имена преобразованных файлов будут длиннее, чем у оригинала. Поэтому, возвращаем к файлу с самым коротким именем.
     return min(matching, key=lambda it: len(it.name))
 
 
 def _cache_file_sort(path: Path) -> Any:
+    """
+    Возвращает ключ сортировки, используемый при очистке кеша.
+
+    Файлы сортируются от новых к старым (по mtime), среди файлов с одинаковым mtime первыми идут файлы с более коротким
+    именем. Таким образом, оригинальный файл будет ближе к началу списка (и удалится с меньшей вероятностью), чем
+    варианты, преобразованные в другие форматы - AudioConverter гарантирует, что mtime новых преобразованных файлов
+    совпадает с mtime оригинала.
+    """
     return -path.stat().st_mtime, len(path.name)
 
 

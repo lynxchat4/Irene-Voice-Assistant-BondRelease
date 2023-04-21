@@ -110,7 +110,7 @@ class AudioChannel(AudioOutputChannel):
     Канал, отправляющий аудио-файлы в чат.
     """
 
-    __slots__ = ('_bot', '_chat')
+    __slots__ = ('_bot', '_chat', '_converter')
 
     def __init__(
             self,
