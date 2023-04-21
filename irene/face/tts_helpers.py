@@ -26,6 +26,23 @@ class DisposableTTSResultFile(TTSResultFile):
         os.remove(self._full_path)
 
 
+class PersistentTTSResultFile(TTSResultFile):
+    """
+    Файл с результатами работы TTS, который не нужно удалять после использования (воспроизведения).
+
+    Например, может представлять собой хранимый в кеше файл с заранее сгенерированной часто используемой фразой.
+    """
+
+    def __init__(self, full_path: str):
+        self._full_path = full_path
+
+    def get_full_path(self) -> str:
+        return self._full_path
+
+    def release(self):
+        pass
+
+
 def create_disposable_tts_result_file(
         preferred_path: Optional[str],
         extension: Optional[str] = None

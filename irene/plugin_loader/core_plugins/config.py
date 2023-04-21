@@ -51,7 +51,7 @@ class ConfigurationScope:
         self._notified_hash: Optional[int] = None
 
     def calc_current_hash(self) -> int:
-        return snapshot_hash(self._value)
+        return snapshot_hash(self._value, hash)
 
     def get_current_value(self) -> dict[str, Any]:
         return self._value
@@ -138,7 +138,7 @@ class ConfigurationScope:
         if self._main_file_path.exists():
             loaded_data = self.load_file(self._main_file_path, encoding)
 
-            self._stored_hash = snapshot_hash(loaded_data)
+            self._stored_hash = snapshot_hash(loaded_data, hash)
             self._stored_mtime = self._main_file_path.stat().st_mtime
         else:
             self._stored_hash = None

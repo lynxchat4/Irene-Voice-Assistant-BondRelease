@@ -164,7 +164,7 @@ def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
             return file
 
         def get_settings_hash(self) -> str:
-            return str(snapshot_hash(full_settings) ^ hash(model_url))
+            return str(snapshot_hash(full_settings) ^ snapshot_hash(model_url))
 
         @property
         def meta(self) -> MetadataMapping:
