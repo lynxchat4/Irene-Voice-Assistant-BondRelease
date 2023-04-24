@@ -4,6 +4,7 @@ appendPythonPath:
   - '{irene_home}/deps'
 excludePlugins:
   - 'plugin_tts_pyttsx'
+  - 'plugin_tts_bark.py'
 pluginPaths:
   - '{irene_path}/embedded_plugins/plugin_*.py'
   - '{irene_home}/plugins/plugin_*.py'
