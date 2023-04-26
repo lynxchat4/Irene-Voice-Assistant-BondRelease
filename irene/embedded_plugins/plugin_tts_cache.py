@@ -247,7 +247,7 @@ def create_file_tts(nxt, prev: Optional[FileWritingTTS], config: dict[str, Any],
     return _CachingFileTTS(tts)
 
 
-def start(*_args, **_kwargs):
+def init(*_args, **_kwargs):
     _do_cleanup()
 
 

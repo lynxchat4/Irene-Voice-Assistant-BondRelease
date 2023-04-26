@@ -155,6 +155,8 @@ def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
             # TODO: Это не будет работать с другими языками кроме русского. Нужно более универсальное решение.
             text = all_num_to_text.all_num_to_text(text)
 
+            _logger.debug("Синтезирую фразу: %s", text)
+
             model.save_wav(
                 audio_path=file.get_full_path(),
                 text=text,

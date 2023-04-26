@@ -1,10 +1,9 @@
 import json
-import tempfile
-import wave
+from io import BytesIO
 from logging import getLogger
-from os.path import join
 from typing import Optional, Callable
 
+import soundfile  # type: ignore
 from telebot import TeleBot  # type: ignore
 from telebot.types import Message  # type: ignore
 from vosk import Model, KaldiRecognizer  # type: ignore
@@ -14,7 +13,7 @@ from irene.brain.output_pool import OutputPoolImpl
 from irene.plugin_loader.abc import PluginManager
 from irene.plugin_loader.magic_plugin import MagicPlugin
 from irene.plugin_loader.run_operation import call_all_as_wrappers
-from irene.utils.audio_converter import AudioConverter, ConversionError
+from irene.utils.audio_converter import AudioConverter
 from irene_plugin_telegram_face.inbound_messages import TelegramMessage
 
 
@@ -51,7 +50,6 @@ class TelegramAudioInputPlugin(MagicPlugin):
             message: Message,
             pm: PluginManager,
             bot: TeleBot,
-            converter: AudioConverter
     ) -> Optional[str]:
         model = self._get_model(pm)
 
@@ -61,31 +59,15 @@ class TelegramAudioInputPlugin(MagicPlugin):
             )
             return None
 
-        with tempfile.TemporaryDirectory() as dir_name:
-            tele_file = bot.get_file(message.voice.file_id)
-            downloaded_tele_file = bot.download_file(tele_file.file_path)
-            temp_src_file_name = join(dir_name, 'voice.ogg')
+        tele_file = bot.get_file(message.voice.file_id)
 
-            with open(temp_src_file_name, 'wb') as f:
-                f.write(downloaded_tele_file)
+        with soundfile.SoundFile(
+            BytesIO(bot.download_file(tele_file.file_path)),
+        ) as sf:
+            recognizer = KaldiRecognizer(model, sf.samplerate)
 
-            try:
-                temp_dst_file_name = converter.convert(
-                    temp_src_file_name, "wav")
-            except ConversionError:
-                self._logger.exception(
-                    "Не удалось преобразовать файл голосового сообщения в формат WAV. "
-                    "Сообщение будет проигнорировано.",
-                    exc_info=True
-                )
-                return None
+            recognizer.AcceptWaveform(sf.buffer_read(dtype='int16')[:])
 
-            with wave.Wave_read(temp_dst_file_name) as wav_file:
-                recognizer = KaldiRecognizer(model, wav_file.getframerate())
-
-                data = wav_file.readframes(wav_file.getnframes())
-
-        recognizer.AcceptWaveform(data)
         result = json.loads(recognizer.Result())
 
         return result['text']
@@ -98,18 +80,9 @@ class TelegramAudioInputPlugin(MagicPlugin):
             send_message: Callable[[InboundMessage], None],
             **_kwargs
     ):
-        if not (converter_ := self._get_audio_converter(pm)):
-            self._logger.warning(
-                "Приём голосовых сообщений не доступен т.к. не установлен конвертер аудио-файлов."
-            )
-            return
-        else:
-            # Давайте поможем MyPy понять, что converter не None после этого if'а
-            converter = converter_
-
         @bot.message_handler(content_types=['voice'])
         def handle_voice_message(message: Message):
-            text = self._recognize_voice(message, pm, bot, converter)
+            text = self._recognize_voice(message, pm, bot)
 
             if text is None:
                 return

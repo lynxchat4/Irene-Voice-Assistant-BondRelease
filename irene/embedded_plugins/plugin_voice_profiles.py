@@ -389,7 +389,7 @@ def receive_config(config: dict[str, Any], *_args, **_kwargs):
                 _profiles[profile_id] = _VoiceProfile(
                     profile_id, profile_settings)
 
-    for profile_id in _profiles.keys():
+    for profile_id in list(_profiles.keys()):
         if not new_profiles.get(profile_id, {}).get('enabled', False):
             del _profiles[profile_id]
 
