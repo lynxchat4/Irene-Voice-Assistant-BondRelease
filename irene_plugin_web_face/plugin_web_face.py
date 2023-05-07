@@ -1,9 +1,6 @@
 import asyncio
-from functools import partial
 from logging import getLogger
-from queue import Queue
-from threading import Thread
-from typing import Callable, Collection, Optional
+from typing import Callable, Collection, Optional, Any
 
 from fastapi import APIRouter, WebSocket
 from starlette.websockets import WebSocketDisconnect
@@ -21,8 +18,7 @@ from irene_plugin_web_face.protocol import MESSAGE_TYPE_KEY, MT_NEGOTIATE_REQUES
 
 class _ConnectionImpl(Connection):
     __slots__ = (
-        '_websocket', '_message_handlers', '_event_loop', '_outputs_pool', '_queue', '_message_processor', '_thread',
-        '_protocols'
+        '_websocket', '_message_handlers', '_event_loop', '_outputs_pool', '_message_processor', '_protocols'
     )
 
     _logger = getLogger('ws-api')
@@ -32,10 +28,8 @@ class _ConnectionImpl(Connection):
         self._message_handlers: dict[str, Callable[[dict], None]] = {}
         self._event_loop = asyncio.get_running_loop()
         self._outputs_pool = OutputPoolImpl(())
-        self._queue: Queue[Callable[[], None]] = Queue()
         self._message_processor: Optional[Callable[[
             InboundMessage], None]] = None
-        self._thread: Optional[Thread] = None
         self._protocols: list[ProtocolHandler] = []
 
     def register_output(self, ch: OutputChannel):
@@ -51,7 +45,7 @@ class _ConnectionImpl(Connection):
         mp(im)
 
     def receive_inbound_message(self, im: InboundMessage):
-        self._queue.put(partial(self._process_inbound_message, im))
+        self._event_loop.run_in_executor(None, self._process_inbound_message, im)
 
     def register_message_type(self, mt: str, handler: Callable[[dict], None]):
         if mt in self._message_handlers:
@@ -61,10 +55,12 @@ class _ConnectionImpl(Connection):
         self._message_handlers[mt] = handler
 
     def send_message(self, mt: str, payload: dict):
-        self._event_loop.create_task(
-            self._websocket.send_json({**payload, 'type': mt}))
+        self._event_loop.call_soon_threadsafe(
+            self._event_loop.create_task,
+            self._websocket.send_json({**payload, 'type': mt}),
+        )
 
-    def on_message_received(self, msg: dict):
+    async def on_message_received(self, msg: dict):
         try:
             mt = msg[MESSAGE_TYPE_KEY]
         except KeyError:
@@ -78,14 +74,13 @@ class _ConnectionImpl(Connection):
                 f"Получено сообщение неизвестного типа: '{mt}'")
             return
 
-        handler(msg)
+        self._event_loop.run_in_executor(None, handler, msg)
 
-    async def negotiate_protocols(self, pm: PluginManager):
-        msg = await self._websocket.receive_json()
-
+    def negotiate_protocols(self, pm: PluginManager, msg: Any):
         if msg.get('type', None) != MT_NEGOTIATE_REQUEST:
             raise ValueError(
-                "Получено неожиданное сообщение в процессе согласования протоколов")
+                "Получено неожиданное сообщение в процессе согласования протоколов"
+            )
 
         protocols: Collection[str] = msg['protocols']
 
@@ -143,38 +138,14 @@ class _ConnectionImpl(Connection):
             handler.start()
             self._protocols.append(handler)
 
-    def start_thread(self, im_handler: Callable[[InboundMessage], None]):
+    def set_message_processor(self, im_handler: Callable[[InboundMessage], None]):
         self._message_processor = im_handler
-
-        def _run():
-            while True:
-                # noinspection PyBroadException
-                try:
-                    self._queue.get()()
-                except InterruptedError:
-                    return
-                except Exception:
-                    self._logger.exception(
-                        "Ошибка при обработке входящего сообщения")
-
-        self._thread = Thread(
-            target=_run,
-            daemon=True,
-        )
-        self._thread.start()
 
     def terminate(self):
         self._outputs_pool.clear()
 
         for proto in self._protocols:
             proto.terminate()
-
-        if self._thread is not None and self._thread.is_alive():
-            def _interrupt():
-                raise InterruptedError()
-
-            self._queue.put(_interrupt)
-            self._thread.join()
 
     @property
     def client_address(self):
@@ -208,26 +179,33 @@ class WebFacePlugin(MagicPlugin):
         @router.websocket('/ws')
         async def process_socket(ws: WebSocket):
             connection = _ConnectionImpl(ws)
+            event_loop = asyncio.get_running_loop()
 
             await ws.accept()
 
             try:
-                await connection.negotiate_protocols(pm)
+                await event_loop.run_in_executor(
+                    None,
+                    connection.negotiate_protocols,
+                    pm, await ws.receive_json(),
+                )
             except Exception as e:
-                self._logger.error(
-                    f"Отказ клиенту {connection.client_address} в подключении: {e}")
+                self._logger.exception(
+                    f"Отказ клиенту %s в подключении",
+                    connection.client_address,
+                )
                 await ws.close(reason=str(e))
-                connection.terminate()
+                await event_loop.run_in_executor(None, connection.terminate)
                 return
 
             with brain.send_messages(connection.get_associated_outputs()) as send_message:
                 try:
-                    connection.start_thread(send_message)
+                    connection.set_message_processor(send_message)
                     self._active_connections.add(connection)
 
                     while True:
                         im = await ws.receive_json()
-                        connection.on_message_received(im)
+                        await connection.on_message_received(im)
                 except WebSocketDisconnect:
                     self._logger.info(
                         f"Соединение с клиентом {connection.client_address} разорвано")
@@ -237,7 +215,7 @@ class WebFacePlugin(MagicPlugin):
                     await ws.close(4500, reason=str(e))
                 finally:
                     self._active_connections.remove(connection)
-                    connection.terminate()
+                    await event_loop.run_in_executor(None, connection.terminate)
 
     def terminate(self, *_args, **_kwargs):
         for connection in self._active_connections:
@@ -246,4 +224,5 @@ class WebFacePlugin(MagicPlugin):
                 connection.terminate()
             except Exception:
                 self._logger.exception(
-                    f"Ошибка при закрытии соединения с клиентом {connection.client_address}")
+                    f"Ошибка при закрытии соединения с клиентом {connection.client_address}"
+                )

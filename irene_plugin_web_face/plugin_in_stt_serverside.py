@@ -1,12 +1,12 @@
+import asyncio
 import datetime
 import json
 import pathlib
 import uuid
 from argparse import ArgumentParser
-from functools import partial
+from asyncio import AbstractEventLoop
 from logging import getLogger
-from queue import Queue
-from threading import Thread
+from threading import Lock
 from typing import Callable, Optional, Any
 
 import vosk  # type: ignore
@@ -123,8 +123,6 @@ class _RecognizerStopException(Exception):
 class _RecognizerWorker(Muteable):
     """
     Поток, отвечающий за распознание речи для отдельного соединения.
-
-    TODO: Использовать общий пул потоков для всех соединений вместо одного потока на соединение
     """
 
     def __init__(
@@ -136,7 +134,6 @@ class _RecognizerWorker(Muteable):
             connection_id: str,
     ):
         self._connection = connection
-        self._queue: Queue[Callable[[], None]] = Queue()
         self._buffer: list[bytes] = []
         self._buffer_length: int = 0
         self._recognizer = vosk.KaldiRecognizer(model, sample_rate)
@@ -144,29 +141,29 @@ class _RecognizerWorker(Muteable):
 
         self._mute_group = mute_group
         self._muted = False
-        self._thread = Thread(
-            target=self._run,
-            daemon=True,
-            name=f'Speech recognizer for connection {connection_id}',
-        )
 
         self._connection_id = connection_id
         self._dump_file = None
 
+        self._event_loop: Optional[AbstractEventLoop] = None
+        self._mx = Lock()
+
     def mute(self):
         self._muted = True
-        self._queue.put(self._cmd_reset_recognizer)
+        self._event_loop.call_soon_threadsafe(
+            self._event_loop.run_in_executor,
+            None, self._cmd_reset_recognizer
+        )
 
     def unmute(self):
         self._muted = False
 
     def stop(self):
         self._need_stop = True
-        self._queue.put(self._cmd_stop)
-        self._thread.join()
 
     def _cmd_reset_recognizer(self) -> None:
-        self._recognizer.Reset()
+        with self._mx:
+            self._recognizer.Reset()
 
     def _cmd_process_data_chunk(self, chunk) -> None:
         if self._muted:
@@ -176,11 +173,12 @@ class _RecognizerWorker(Muteable):
             self._dump_file.write(chunk)
             self._dump_file.flush()
 
-        if not self._recognizer.AcceptWaveform(chunk):
-            return
+        with self._mx:
+            if not self._recognizer.AcceptWaveform(chunk):
+                return
 
-        recognized = json.loads(self._recognizer.Result())
-        text = recognized['text']
+            recognized = json.loads(self._recognizer.Result())
+            text = recognized['text']
 
         if len(text) > 0 and not self._muted:
             _logger.debug("Распознано: %s", text)
@@ -217,21 +215,8 @@ class _RecognizerWorker(Muteable):
         self._dump_file = None
         file.close()
 
-    def _run(self) -> None:
-        self._open_dump_file()
-
-        try:
-            while not self._need_stop:
-                self._queue.get()()
-        except _RecognizerStopException:
-            ...
-        finally:
-            self._need_stop = True
-
-            self._close_dump_file()
-
     async def process_connection(self, ws: WebSocket):
-        self._thread.start()
+        self._event_loop = asyncio.get_running_loop()
 
         remove_from_mute_group = self._mute_group.add_item(self)
 
@@ -239,7 +224,11 @@ class _RecognizerWorker(Muteable):
             while not self._need_stop:
                 chunk = await ws.receive_bytes()
 
-                self._queue.put(partial(self._cmd_process_data_chunk, chunk))
+                await self._event_loop.run_in_executor(
+                    None,
+                    self._cmd_process_data_chunk,
+                    chunk
+                )
         except WebSocketDisconnect:
             _logger.info("Соединение с клиентом разорвано")
         finally:

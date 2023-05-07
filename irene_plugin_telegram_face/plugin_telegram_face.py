@@ -60,11 +60,13 @@ class TelegramFacePlugin(MagicPlugin):
         token: Optional[str]
         authorizedChats: list[int]
         authorizationSecret: Optional[str]
+        numThreads: int
 
     config: _Config = {
         "token": None,
         "authorizedChats": [],
         "authorizationSecret": None,
+        "numThreads": 2,
     }
 
     _logger = getLogger(name)
@@ -142,6 +144,7 @@ class TelegramFacePlugin(MagicPlugin):
         bot = TeleBot(
             token,
             suppress_middleware_excepions=True,
+            num_threads=self.config['numThreads'],
         )
 
         brain: Brain = call_all_as_wrappers(

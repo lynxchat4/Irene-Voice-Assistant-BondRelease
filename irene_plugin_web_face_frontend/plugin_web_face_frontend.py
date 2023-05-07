@@ -1,3 +1,4 @@
+import asyncio
 from logging import getLogger
 from os.path import join, dirname, isdir, isfile
 from typing import Any
@@ -68,16 +69,20 @@ def register_fastapi_routes(app: FastAPI, *_args, **_kwargs):
     app.mount('/', static_files)
 
 
+def _load_custom_css():
+    css_chunks = [config['customCss']]
+
+    for file_path in sorted(match_files(config['customCssPaths'])):
+        with open(file_path, 'r') as file:
+            css_chunks.append(file.read())
+
+    return '\n'.join(css_chunks)
+
+
 def register_fastapi_endpoints(router: APIRouter, *_args, **_kwargs):
     @router.get('/custom-styles.css')
-    def get_custom_styles():
-        css_chunks = [config['customCss']]
-
-        for file_path in sorted(match_files(config['customCssPaths'])):
-            with open(file_path, 'r') as file:
-                css_chunks.append(file.read())
-
+    async def get_custom_styles():
         return Response(
-            '\n'.join(css_chunks),
+            await asyncio.get_running_loop().run_in_executor(None, _load_custom_css),
             media_type='text/css',
         )
