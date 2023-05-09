@@ -2,11 +2,9 @@
 Содержит вспомогательные функции для выполнения операций (см. документацию к модулю ``irene.plugins.abc``).
 """
 
-import logging
-from collections import Iterable
+import asyncio
 from functools import partial
-from threading import Thread
-from typing import Callable, Any, Collection
+from typing import Any, Collection, Iterable
 
 from irene.plugin_loader.abc import OperationStep
 
@@ -30,25 +28,6 @@ def call_all(steps: Iterable[OperationStep], *args, **kwargs):
             raise TypeError(f"Шаг {step} не является функцией")
 
         step.step(*args, **kwargs)
-
-
-def call_all_failsafe(steps: Iterable[OperationStep], *args, **kwargs):
-    """
-    Выполняет все шаги операции последовательно, игнорирует (и пишет в логи) все возникающие ошибки.
-
-    Args:
-        steps:
-            шаги операции
-        *args:
-            позиционные аргументы для вызова шагов
-        **kwargs:
-            именованные аргументы для вызова шагов
-    """
-    for step in steps:
-        try:
-            step.step(*args, **kwargs)
-        except Exception:
-            logging.exception("Ошибка при выполнении шага %s", step)
 
 
 def call_until_first_result(steps: Iterable[OperationStep], *args, **kwargs):
@@ -137,40 +116,58 @@ def call_all_as_wrappers(steps: Iterable[OperationStep], initial: Any, *args, **
     return _call_wrapper(tuple(steps), initial, *args, **kwargs)
 
 
-def call_all_parallel(steps: Iterable[OperationStep], *args, **kwargs):
+async def call_all_parallel_async(steps: Iterable[OperationStep], *args, **kwargs) -> Collection[asyncio.Task]:
     """
-    Запускает все шаги операции параллельно в разных потоках.
+    Подготавливает Task'и для параллельного асинхронного запуска шагов в текущем Event Loop'е (и его executor'е).
+
+    NOTE: Полученные Task'и нужно заawait'ить. Как правило, для этого можно использовать ``asyncio.gather``:
+
+    >>> await asyncio.gather(*await call_all_parallel_async(...))
+
+    Если шаг является асинхронной функцией, то он запускается в текущем event loop'е, если не асинхронной - то он
+    запускается в executor'е, связанном с текущим event loop'ом.
+
+    Независимые шаги запускаются параллельно.
 
     Args:
         steps:
-            шаги операции
-        *args:
-            позиционные аргументы для вызова шагов
-        **kwargs:
-            именованные аргументы для вызова шагов
-    Raises:
-        TypeError - если хотя бы один из шагов не является функцией
+            последовательность шагов.
+        *args, **kwargs:
+            аргументы, с которыми будут вызваны шаги
     """
-    threads: list[Thread] = []
+    loop = asyncio.get_running_loop()
 
-    def start_thread(callback: Callable, name: str):
-        thread = Thread(
-            name=name,
-            daemon=True,
-            target=callback,
-            args=args, kwargs=kwargs,
-        )
-        thread.start()
-        threads.append(thread)
+    steps_list: list[OperationStep] = list(steps)
 
-    for step in steps:
-        if callable(step.step):
-            start_thread(step.step, str(step))
-        else:
+    dependencies: dict[str, set[str]] = {step.name: set(step.dependencies) for step in steps_list}
+
+    for step in steps_list:
+        if not callable(step.step):
             raise TypeError(
-                f"Неподдерживаемый тип шага {step}: {type(step.step)}")
+                f"Неподдерживаемый тип шага {step}: {type(step.step)}"
+            )
 
-    for t in threads:
-        # простой вызов join() игнорирует KeyboardInterrupt
-        while t.is_alive():
-            t.join(1.0)
+        for r_dep in step.reverse_dependencies:
+            if r_dep in dependencies:
+                dependencies[r_dep].add(step.name)
+
+    tasks: dict[str, asyncio.Task] = {}
+
+    async def _run_step(step: OperationStep):
+        await asyncio.gather(*[tasks[dep] for dep in dependencies[step.name] if dep in tasks])
+
+        try:
+            if asyncio.iscoroutinefunction(step.step):
+                await step.step(*args, **kwargs)
+            else:
+                await loop.run_in_executor(
+                    None,
+                    partial(step.step, *args, **kwargs),
+                )
+        except asyncio.CancelledError:
+            pass
+
+    for s in steps_list:
+        tasks[s.name] = loop.create_task(_run_step(s), name=s.name)
+
+    return list(tasks.values())

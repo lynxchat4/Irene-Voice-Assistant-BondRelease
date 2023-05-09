@@ -9,13 +9,13 @@
 - файлов накопилось больше заданного количества
 """
 
+import asyncio
 import os
 from datetime import datetime
 from hashlib import sha256
 from logging import getLogger
 from pathlib import Path
 from shutil import copy
-from threading import Event
 from typing import TypedDict, Optional, Any
 
 from irene.face.abc import FileWritingTTS, TTSResultFile
@@ -24,7 +24,7 @@ from irene.plugin_loader.file_patterns import first_substitution
 from irene.utils.metadata import MetadataMapping
 
 name = 'tts_cache'
-version = '0.1.0'
+version = '0.2.0'
 
 _logger = getLogger(name)
 
@@ -58,8 +58,6 @@ config_comment = """
                         0, `null` или значение меньше 0 означают, что файлы кеша могут храниться сколь угодно долго.
 - `cleanup_interval`  - интервал (в часах) с которым происходит очистка кеша.
 """
-
-_terminated = Event()
 
 
 def _ensure_cache_dir() -> Path:
@@ -251,15 +249,14 @@ def init(*_args, **_kwargs):
     _do_cleanup()
 
 
-def run(*_args, **_kwargs):
-    while not _terminated.wait(config['cleanup_interval'] * 360):
-        try:
-            _do_cleanup()
-        except Exception:
-            _logger.exception("Ошибка в процессе очистки кеша")
+async def run(*_args, **_kwargs):
+    try:
+        while True:
+            await asyncio.sleep(config['cleanup_interval'] * 360)
 
-    _logger.info("Останавливаю поток очистки кеша")
-
-
-def terminate(*_args, **_kwargs):
-    _terminated.set()
+            try:
+                await asyncio.get_running_loop().run_in_executor(None, _do_cleanup)
+            except Exception:
+                _logger.exception("Ошибка в процессе очистки кеша")
+    finally:
+        _logger.info("Задача очистки кеша завершена.")

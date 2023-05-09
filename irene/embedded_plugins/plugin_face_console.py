@@ -1,3 +1,4 @@
+import asyncio
 from typing import TypedDict
 
 from irene.brain.abc import TextOutputChannel
@@ -9,6 +10,16 @@ from irene.plugin_loader.magic_plugin import MagicPlugin
 from irene.plugin_loader.run_operation import call_all_as_wrappers
 from irene.utils.metadata import MetadataMapping
 
+try:
+    from aioconsole import ainput
+except ImportError:
+    async def ainput(prompt: str):
+        # Заглушка на случай если библиотека aioconsole не установлена. Работает не так хорошо - процесс может не
+        # завершаться при получении сигнала прерывания.
+        return await asyncio.get_running_loop().run_in_executor(
+            None,
+            input, prompt
+        )
 
 class ConsoleOutputChannel(TextOutputChannel):
     def __init__(self, prefix):
@@ -41,7 +52,7 @@ class ConsoleFace(MagicPlugin):
     """
 
     name = 'face_console'
-    version = '2.0.0'
+    version = '2.1.0'
 
     config: ConsoleFaceConfig = {
         'enabled': False,
@@ -69,7 +80,7 @@ class ConsoleFace(MagicPlugin):
             ConsoleOutputChannel(self.config['reply_prefix']),
         ))
 
-    def run(self, pm: PluginManager, *_args, **_kwargs):
+    async def run(self, pm: PluginManager, *_args, **_kwargs):
         if not self.config['enabled']:
             return
 
@@ -82,7 +93,7 @@ class ConsoleFace(MagicPlugin):
         with brain.send_messages(self._outputs) as send_message:
             while True:
                 try:
-                    text = input(self.config['prompt'])
+                    text = await ainput(self.config['prompt'])
                 except EOFError:
                     print("\nКонсольный поток ввода завершён.")
                     break

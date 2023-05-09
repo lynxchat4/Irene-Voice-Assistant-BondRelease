@@ -164,11 +164,6 @@ class WebFacePlugin(MagicPlugin):
 
     _logger = getLogger('face_web')
 
-    def __init__(self):
-        super().__init__()
-
-        self._active_connections: set[_ConnectionImpl] = set()
-
     def register_fastapi_endpoints(self, router: APIRouter, pm: PluginManager, *_args, **_kwargs):
         brain: Brain = call_all_as_wrappers(
             pm.get_operation_sequence('get_brain'), None, pm)
@@ -201,7 +196,6 @@ class WebFacePlugin(MagicPlugin):
             with brain.send_messages(connection.get_associated_outputs()) as send_message:
                 try:
                     connection.set_message_processor(send_message)
-                    self._active_connections.add(connection)
 
                     while True:
                         im = await ws.receive_json()
@@ -214,15 +208,4 @@ class WebFacePlugin(MagicPlugin):
                         f"Ошибка при обработке сообщений от удалённого клиента")
                     await ws.close(4500, reason=str(e))
                 finally:
-                    self._active_connections.remove(connection)
                     await event_loop.run_in_executor(None, connection.terminate)
-
-    def terminate(self, *_args, **_kwargs):
-        for connection in self._active_connections:
-            # noinspection PyBroadException
-            try:
-                connection.terminate()
-            except Exception:
-                self._logger.exception(
-                    f"Ошибка при закрытии соединения с клиентом {connection.client_address}"
-                )

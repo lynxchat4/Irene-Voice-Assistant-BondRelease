@@ -1,5 +1,4 @@
 import asyncio
-import threading
 from logging import getLogger
 from typing import Optional
 
@@ -35,7 +34,7 @@ class WebServerPlugin(MagicPlugin):
         super().__init__()
 
         self._server: Optional[uvicorn.Server] = None
-        self._thread: Optional[threading.Thread] = None
+        self._task: Optional[asyncio.Task] = None
 
     def _create_app(self, pm: PluginManager):
         app = FastAPI(
@@ -61,12 +60,15 @@ class WebServerPlugin(MagicPlugin):
 
         app.include_router(api_root_router, prefix='/api')
 
-    def run(self, pm: PluginManager, *_args, **_kwargs):
-        self._thread = threading.current_thread()
+    async def _shielded_run(self):
+        await self._server.serve()
+        self._logger.debug("Сервер завершил работу.")
 
+    async def run(self, pm: PluginManager, *_args, **_kwargs):
         if 'reload' in self.config or 'workers' in self.config:
             self._logger.warning(
-                f"Конфигурация содержит параметры reload и/или workers. Они будут проигнорированы.")
+                f"Конфигурация содержит параметры reload и/или workers. Они будут проигнорированы."
+            )
 
         uvicorn_config = uvicorn.Config(
             self._create_app(pm),
@@ -78,9 +80,15 @@ class WebServerPlugin(MagicPlugin):
 
         self._server = uvicorn.Server(uvicorn_config)
 
-        asyncio.run(self._server.serve())
+        # Uvicorn завершается очень некорректно если отменить его корневой task.
+        # Поэтому, используем shield() чтобы защитить это нежное животное.
+        self._task = asyncio.create_task(self._shielded_run())
+        await asyncio.shield(self._task)
 
-    def terminate(self, *_args, **_kwargs):
+
+    async def terminate(self, *_args, **_kwargs):
         if self._server is not None:
             self._server.should_exit = True
-            self._thread.join()
+            if self._task:
+                self._logger.debug("Ожидаю завершения работы сервера.")
+                await self._task

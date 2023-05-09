@@ -23,3 +23,5 @@ websockets~=10.3
 torch~=1.12.1
 
 time_machine~=2.8.2
+
+aioconsole~=0.6.1
