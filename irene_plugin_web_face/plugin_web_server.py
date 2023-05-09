@@ -85,7 +85,6 @@ class WebServerPlugin(MagicPlugin):
         self._task = asyncio.create_task(self._shielded_run())
         await asyncio.shield(self._task)
 
-
     async def terminate(self, *_args, **_kwargs):
         if self._server is not None:
             self._server.should_exit = True

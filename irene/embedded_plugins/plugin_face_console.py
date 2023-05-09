@@ -11,7 +11,7 @@ from irene.plugin_loader.run_operation import call_all_as_wrappers
 from irene.utils.metadata import MetadataMapping
 
 try:
-    from aioconsole import ainput
+    from aioconsole import ainput  # type: ignore
 except ImportError:
     async def ainput(prompt: str):
         # Заглушка на случай если библиотека aioconsole не установлена. Работает не так хорошо - процесс может не
@@ -20,6 +20,7 @@ except ImportError:
             None,
             input, prompt
         )
+
 
 class ConsoleOutputChannel(TextOutputChannel):
     def __init__(self, prefix):
