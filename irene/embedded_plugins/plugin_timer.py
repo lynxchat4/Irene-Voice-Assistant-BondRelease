@@ -17,7 +17,7 @@ female_units_sec = ((u'секунда', u'секунды', u'секунд'), 'f'
 
 class TimerPlugin(MagicPlugin):
     name = 'plugin_timer'
-    version = '7.0.0'
+    version = '7.1.0'
 
     _logger = getLogger(name)
 
