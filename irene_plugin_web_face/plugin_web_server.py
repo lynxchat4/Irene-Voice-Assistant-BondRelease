@@ -30,7 +30,7 @@ class WebServerPlugin(MagicPlugin):
 
     _logger = getLogger(name)
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self._server: Optional[uvicorn.Server] = None

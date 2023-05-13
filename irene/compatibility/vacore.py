@@ -13,9 +13,9 @@ class _UnsupportedConfigAccessError(NotImplementedError):
 
 
 class VACore:
-    def __init__(self, modname, core_config):
+    def __init__(self, modname, core_config) -> None:
         self._modname = modname
-        self.config = {}
+        self.config: dict[str, Any] = {}
         self.mpcIsUse = core_config.get('mpcIsUse', False)
         self.mpcHcPath = core_config.get('mpcHcPath', '')
         self.mpcIsUseHttpRemote = core_config.get('mpcIsUseHttpRemote', False)

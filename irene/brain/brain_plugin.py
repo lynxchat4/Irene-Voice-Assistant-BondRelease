@@ -40,10 +40,10 @@ class BrainPlugin(MagicPlugin):
 
     _ErrorPhraseKeys = Literal['unknownRootCommandReply', 'ambiguousRootCommandReply']
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-        self._brain: Optional = None
+        self._brain: Optional[BrainImpl] = None
 
     def _construct_context(self, pm: PluginManager, src: VAContextSource, **kwargs):
         if 'construct_nested' not in kwargs:

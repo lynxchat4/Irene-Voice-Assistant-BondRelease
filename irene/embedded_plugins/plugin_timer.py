@@ -1,11 +1,7 @@
-import logging
-from datetime import datetime, timedelta
-from functools import partial
-from heapq import heappush, heappop
-from queue import Queue, Empty
-from threading import Thread
+import asyncio
+from logging import getLogger
 from time import sleep
-from typing import Callable, TypedDict
+from typing import TypedDict, Optional
 
 import irene.utils.num_to_text_ru as num_to_text
 from irene import VAApiExt
@@ -19,51 +15,11 @@ female_units_sec2 = ((u'секунду', u'секунды', u'секунд'), 'f
 female_units_sec = ((u'секунда', u'секунды', u'секунд'), 'f')
 
 
-class _Timer(Thread):
-    def __init__(self):
-        super().__init__(
-            daemon=True,
-            name='Timer'
-        )
-        self._q = Queue()
-        self._timers = []
-        self._stopped = False
-
-    def stop(self):
-        self._stopped = True
-        self._q.put(lambda: ...)
-        self.join()
-
-    def _add(self, dt, cb):
-        heappush(self._timers, (datetime.utcnow() + dt, cb))
-
-    def add(self, dt: timedelta, cb: Callable[[], None]):
-        self._q.put(partial(self._add, dt, cb))
-
-    def run(self):
-        while not self._stopped:
-            if len(self._timers) == 0:
-                timeout = None
-            else:
-                timeout = (self._timers[0][0] -
-                           datetime.utcnow()).total_seconds()
-
-            try:
-                self._q.get(block=True, timeout=timeout)()
-            except Empty:
-                ...
-
-            while len(self._timers) > 0 and self._timers[0][0] <= datetime.utcnow():
-                _, cb = heappop(self._timers)
-                try:
-                    cb()
-                except Exception:
-                    logging.exception("Ошибка при обработке таймера.")
-
-
 class TimerPlugin(MagicPlugin):
     name = 'plugin_timer'
     version = '7.0.0'
+
+    _logger = getLogger(name)
 
     class _Config(TypedDict):
         wavRepeatTimes: int
@@ -74,17 +30,12 @@ class TimerPlugin(MagicPlugin):
         'wavPath': '{irene_path}/embedded_plugins/media/timer.wav',
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self._timer = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
-    def init(self, *_args, **_kwargs):
-        self._timer = _Timer()
-        self._timer.start()
-
-    def terminate(self, pm, *_args, **_kwargs):
-        if self._timer is not None:
-            self._timer.stop()
+    async def init(self, *_args, **_kwargs):
+        self._loop = asyncio.get_running_loop()
 
     def define_commands(self, *_args, **_kwargs):
         return {
@@ -102,8 +53,26 @@ class TimerPlugin(MagicPlugin):
 
             va.say(f"{text} прошло")
 
-        self._timer.add(timedelta(seconds=time), partial(
-            va.submit_active_interaction, done_interaction))
+        async def timer_task():
+            await asyncio.sleep(time)
+            try:
+                await self._loop.run_in_executor(
+                    None,
+                    va.submit_active_interaction,
+                    done_interaction
+                )
+            except Exception:
+                self._logger.exception("Ошибка при обработке таймера")
+
+        loop = self._loop
+
+        if loop is None:
+            raise Exception("Установка таймера до вызова init()")
+
+        loop.call_soon_threadsafe(
+            loop.create_task,
+            timer_task(),
+        )
 
         va.say(f"поставила таймер на {text}")
 
@@ -122,19 +91,16 @@ class TimerPlugin(MagicPlugin):
         for i in range(100, 1, -1):
             txt = num_to_text.num2text(i, female_units_sec) + " "
             if phrase.startswith(txt):
-                # print(txt)
                 self._set_timer_real(va, i, txt)
                 return
 
             txt2 = num_to_text.num2text(i, female_units_sec2) + " "
             if phrase.startswith(txt2):
-                # print(txt,txt2)
                 self._set_timer_real(va, i, txt)
                 return
 
             txt3 = str(i) + " секунд "
             if phrase.startswith(txt3):
-                # print(txt,txt2)
                 self._set_timer_real(va, i, txt)
                 return
 
@@ -152,7 +118,6 @@ class TimerPlugin(MagicPlugin):
 
             txt3 = str(i) + " минут "
             if phrase.startswith(txt3):
-                # print(txt,txt2)
                 self._set_timer_real(va, i * 60, txt)
                 return
 

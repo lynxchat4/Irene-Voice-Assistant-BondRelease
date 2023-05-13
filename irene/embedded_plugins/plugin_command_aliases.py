@@ -136,14 +136,14 @@ class _AliasResolutionContext(BaseContextWrapper):
         return self._wrapped.handle_command(va, _apply_command_aliases(message))
 
 
-def receive_config(*_args, **_kwargs):
+def receive_config(*_args, **_kwargs) -> None:
     tree: VACommandTree[_Alias] = VACommandTree()
 
     for alias_conf in config['command_aliases']:
         alias = _Alias(alias_conf)
 
-        aliases = alias_conf['aliases']
-        aliases: list[str] = [aliases] if isinstance(aliases, str) else aliases
+        aliases_src = alias_conf['aliases']
+        aliases: list[str] = [aliases_src] if isinstance(aliases_src, str) else aliases_src
 
         try:
             tree.add_commands({alias_text: alias for alias_text in aliases}, lambda it: it)

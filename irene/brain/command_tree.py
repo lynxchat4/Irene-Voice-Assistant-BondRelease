@@ -46,7 +46,7 @@ class ConflictingCommandsException(Exception, Generic[T]):
 
 
 class _CommandTreeNode(Generic[T]):
-    def __init__(self):
+    def __init__(self) -> None:
         self._children: dict[str, _CommandTreeNode] = {}
         self._ctx: Optional[T] = None
 

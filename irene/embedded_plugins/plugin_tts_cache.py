@@ -111,7 +111,7 @@ def _cache_file_sort(path: Path) -> Any:
     return -path.stat().st_mtime, len(path.name)
 
 
-def _do_cleanup():
+def _do_cleanup() -> None:
     _logger.info("Ищу файлы кеша, которые пора удалить")
 
     cache_files: list[Path] = list(_ensure_cache_dir().iterdir())
@@ -128,7 +128,7 @@ def _do_cleanup():
             )
 
     if (size_limit := (config['max_size'] or 0)) > 0:
-        size_accumulator = 0  # MiB
+        size_accumulator = 0.0  # MiB
 
         for i, file in enumerate(cache_files):
             size_accumulator += file.stat().st_size / 1024 / 1024  # Bytes -> MiBytes

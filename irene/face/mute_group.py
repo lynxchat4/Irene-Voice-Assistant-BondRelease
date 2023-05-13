@@ -5,7 +5,7 @@ from irene.face.abc import MuteGroup, Muteable
 
 
 class MuteGroupImpl(MuteGroup):
-    def __init__(self):
+    def __init__(self) -> None:
         self._items: list[Muteable] = []
         self._mx = Lock()
         self._mute_count = 0

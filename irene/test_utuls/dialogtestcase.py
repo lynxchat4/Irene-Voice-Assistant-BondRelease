@@ -14,7 +14,7 @@ from irene.brain.output_pool import OutputPoolImpl
 
 
 class _VAApiStub(VAApi):
-    def __init__(self):
+    def __init__(self) -> None:
         self._output_log = ''
 
         api_stub = self
@@ -71,7 +71,7 @@ _ACT_PREFIX = "! act "
 
 
 class DialogTestCase(TestCase):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.ctx_manager: Optional[VAContextManager] = None

@@ -142,7 +142,7 @@ def launch_application(
     call_all(pm.get_operation_sequence('bootstrap'), pm)
     parse_args(True)
 
-    async def run_async_operations():
+    async def run_async_operations() -> None:
         executor = ThreadPoolExecutor(
             max_workers=executor_max_workers,
         )

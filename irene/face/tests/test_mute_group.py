@@ -6,7 +6,7 @@ from irene.face.mute_group import MuteGroupImpl
 
 
 class TestMuteable(Muteable):
-    def __init__(self):
+    def __init__(self) -> None:
         self.muted: Optional[bool] = None
 
     def mute(self):

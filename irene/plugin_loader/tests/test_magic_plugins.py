@@ -179,7 +179,7 @@ class MagicPluginTest(unittest.TestCase):
                 module.terminate, 'magic plugin module sample.terminate', plugin, (), ())]
         )
 
-    def test_module_plugin_attribute_forwarding(self):
+    def test_module_plugin_attribute_forwarding(self) -> None:
         import irene.plugin_loader.tests.magic_plugin_sample as module
 
         plugin = MagicModulePlugin(module)

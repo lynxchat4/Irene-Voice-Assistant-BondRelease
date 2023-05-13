@@ -155,7 +155,7 @@ class VoiceProfilesTest(PluginTestCase):
 
         self.assertEqual(len(ttss), 2)
 
-    def test_file_profiles_order(self):
+    def test_file_profiles_order(self) -> None:
         ttss: list[FileWritingTTS] = call_all_as_wrappers(
             self.pm.get_operation_sequence('get_file_writing_tts_engines'),
             [],
@@ -179,7 +179,7 @@ class VoiceProfilesTest(PluginTestCase):
         self.assert_result_from(ttss[1].say_to_file(
             'test'), self.fixture_plugin.file_mock1)
 
-    def test_file_profile_get_one_by_meta(self):
+    def test_file_profile_get_one_by_meta(self) -> None:
         ttss: list[FileWritingTTS] = call_all_as_wrappers(
             self.pm.get_operation_sequence('get_file_writing_tts_engines'),
             [],
@@ -202,7 +202,7 @@ class VoiceProfilesTest(PluginTestCase):
 
         self.assertEqual(3, len(ttss))
 
-    def test_one_direct_immediate_profile(self):
+    def test_one_direct_immediate_profile(self) -> None:
         ttss: list[ImmediatePlaybackTTS] = call_all_as_wrappers(
             self.pm.get_operation_sequence(
                 'get_immediate_playback_tts_engines'),
@@ -217,7 +217,7 @@ class VoiceProfilesTest(PluginTestCase):
         self.fixture_plugin.immediate_mock2.say.assert_called_once_with(
             'Hi', additional_arg='foo')
 
-    def test_one_composite_immediate_profile(self):
+    def test_one_composite_immediate_profile(self) -> None:
         """
         Чтобы получить ImmediatePlaybackTTS для профиля с TTS-движком, поддерживающим только запись в файлы, mock1_prof,
         voice_profiles создаёт канал воспроизведения файлов (AudioOutputChannel) и создаёт адаптер, генерирующий файл

@@ -39,7 +39,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
         "excludePlugins": []
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._plugins: list[Plugin] = []
         self._excluded: set[str] = set()
@@ -169,7 +169,7 @@ class PluginDiscoveryPlugin(MagicPlugin):
 
         return MagicModulePlugin(module),
 
-    def register_fastapi_endpoints(self, router, *_args, **_kwargs):
+    def register_fastapi_endpoints(self, router, *_args, **_kwargs) -> None:
         from fastapi import APIRouter
         from pydantic import BaseModel, Field
 

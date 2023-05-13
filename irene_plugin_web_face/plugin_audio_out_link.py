@@ -180,7 +180,7 @@ class WebAudioOutputPlugin(MagicPlugin):
     name = 'web-audio-link-output'
     version = '0.1.0'
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self._file_bindings = FileBindings(f'/api/{self.name}/files')

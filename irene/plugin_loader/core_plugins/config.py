@@ -1,6 +1,6 @@
+import asyncio
 import json
 from argparse import ArgumentParser
-from collections import Collection
 from logging import getLogger
 from os import listdir
 from os.path import isdir, isfile, join, basename
@@ -8,7 +8,7 @@ from pathlib import Path
 from shutil import copyfile
 from textwrap import dedent
 from threading import Event
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, Collection
 
 import yaml  # type: ignore
 
@@ -426,59 +426,51 @@ class ConfigPlugin(MagicPlugin):
         for step in plugin.get_operation_steps('config'):
             self._init_config_scope(step)
 
-    def run(self, *_args, **_kwargs):
-        self._watch_started = True
-        try:
-            while not self._watch_termination_request.wait(self.config['watchIntervalSeconds']):
-                watch_file_changes, watch_memory_changes = \
-                    self.config['watchFileChanges'], self.config['watchMemoryChanges']
+    def _scan_changes(self, watch_file_changes: bool, watch_memory_changes: bool):
+        for scope_name, scope in self._scopes.items():
+            if watch_memory_changes and scope.was_modified_in_memory():
+                _logger.info("Конфигурация для %s была изменена, перезаписываю файл", scope_name)
+                try:
+                    scope.store_main_file(self._get_file_encoding(), self.config['yamlDumpOptions'])
+                except Exception:
+                    _logger.exception("Ошибка при сохранении конфигурации для %s", scope_name)
+            elif watch_file_changes and scope.was_modified_on_disk():
+                _logger.info("Файл конфигурации для %s был изменён, загружаю его", scope_name)
 
-                if (not watch_file_changes) and (not watch_memory_changes):
-                    continue
+                try:
+                    scope.load_main_file(self._get_file_encoding())
+                except Exception:
+                    _logger.exception("Ошибка при загрузке конфигурации для %s", scope_name)
 
-                for scope_name, scope in self._scopes.items():
-                    if watch_memory_changes and scope.was_modified_in_memory():
-                        _logger.info(
-                            "Конфигурация для %s была изменена, перезаписываю файл",
-                            scope_name,
-                        )
-                        try:
-                            scope.store_main_file(
-                                self._get_file_encoding(), self.config['yamlDumpOptions'])
-                        except Exception:
-                            _logger.exception(
-                                "Ошибка при сохранении конфигурации для %s", scope_name)
-                    elif watch_file_changes and scope.was_modified_on_disk():
-                        _logger.info(
-                            "Файл конфигурации для %s был изменён, загружаю его",
-                            scope_name,
-                        )
-                        try:
-                            scope.load_main_file(self._get_file_encoding())
-                        except Exception:
-                            _logger.exception(
-                                "Ошибка при загрузке конфигурации для %s", scope_name)
+                try:
+                    scope.notify_plugin()
+                except Exception:
+                    _logger.exception("Ошибка при обработке изменений в конфигурации %s", scope_name)
 
-                        try:
-                            scope.notify_plugin()
-                        except Exception:
-                            _logger.exception(
-                                "Ошибка при обработке изменений в конфигурации %s", scope_name)
-        finally:
-            self._watch_terminated.set()
+    async def run(self, *_args, **_kwargs):
+        loop = asyncio.get_running_loop()
+
+        while True:
+            await asyncio.sleep(self.config['watchIntervalSeconds'])
+
+            watch_file_changes, watch_memory_changes = \
+                self.config['watchFileChanges'], self.config['watchMemoryChanges']
+
+            if (not watch_file_changes) and (not watch_memory_changes):
+                continue
+
+            await loop.run_in_executor(
+                None,
+                self._scan_changes,
+                watch_file_changes, watch_memory_changes
+            )
 
     def terminate(self, *_args, **_kwargs):
-        if self._watch_started:
-            self._watch_termination_request.set()
-            self._watch_terminated.wait()
-            self._watch_terminated.clear()
-            self._watch_termination_request.clear()
-
         if self.config['storeOnShutdown']:
             for scope_name in self._scopes.keys():
                 self._store_config(scope_name)
 
-    def register_fastapi_endpoints(self, router, *_args, **_kwargs):
+    def register_fastapi_endpoints(self, router, *_args, **_kwargs) -> None:
         from fastapi import APIRouter, Body, HTTPException
         from pydantic import BaseModel, Field
 

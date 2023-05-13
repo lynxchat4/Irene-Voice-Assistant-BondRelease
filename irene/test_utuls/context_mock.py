@@ -5,14 +5,14 @@ from irene.brain.abc import VAContext, VAApi, InboundMessage
 
 
 class VAContextMock(VAContext):
-    def __init__(self):
+    def __init__(self) -> None:
         self.timeout_context: Optional[VAContext] = None
         self.cmd_contexts: dict[str, VAContext] = {}
         self.timeout = None
 
-        self.handle_command_text = Mock(wraps=self.handle_command_text)
-        self.handle_command = Mock(wraps=self.handle_command)
-        self.handle_timeout = Mock(wraps=self.handle_timeout)
+        self.handle_command_text = Mock(wraps=self.handle_command_text)  # type: ignore
+        self.handle_command = Mock(wraps=self.handle_command)  # type: ignore
+        self.handle_timeout = Mock(wraps=self.handle_timeout)  # type: ignore
 
     def handle_command_text(self, va: VAApi, text: str):
         """
