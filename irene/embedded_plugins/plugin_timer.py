@@ -30,6 +30,14 @@ class TimerPlugin(MagicPlugin):
         'wavPath': '{irene_path}/embedded_plugins/media/timer.wav',
     }
 
+    config_comment = """
+    Настройки таймера.
+    
+    Параметры:
+    - `wavPath`           - путь к аудио файлу, проигрываемому перед сообщением о срабатывании таймера.
+    - `wavRepeatTimes`    - количество проигрываний аудио файла.
+    """
+
     def __init__(self) -> None:
         super().__init__()
         self._loop: Optional[asyncio.AbstractEventLoop] = None
