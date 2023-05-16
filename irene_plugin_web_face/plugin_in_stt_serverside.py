@@ -220,6 +220,11 @@ class _RecognizerWorker(Muteable):
 
         remove_from_mute_group = self._mute_group.add_item(self)
 
+        await self._event_loop.run_in_executor(
+            None,
+            self._open_dump_file
+        )
+
         try:
             while not self._need_stop:
                 chunk = await ws.receive_bytes()
@@ -236,6 +241,11 @@ class _RecognizerWorker(Muteable):
                 self.stop()
             finally:
                 remove_from_mute_group()
+
+            await self._event_loop.run_in_executor(
+                None,
+                self._close_dump_file
+            )
 
 
 class _ServerSTTHandler(ProtocolHandler):
