@@ -22,23 +22,35 @@
  *
  * Протестировано с модулем на основе MAX98357A.
  */
-#define OUT_I2S_PORT I2S_NUM_0  // Номер порта I2S, используемого для вывода звука
+#define OUT_I2S_PORT I2S_NUM_1  // Номер порта I2S, используемого для вывода звука
 #define OUT_I2S_DOUT 5          // Номер вывода контроллера, подключенного к линии данных устройства вывода (DIN на MAX98357A)
 #define OUT_I2S_BCLK 17         // Номер вывода контроллера, подключенного к линии bit clock устройства вывода
 #define OUT_I2S_LRC 16          // Номер вывода контроллера, подключенного к линии left/right clock устройства вывода
 
 #define PLAYBACK_VOLUME 21  // Громкость воспроизведения
 
+// Расскомментируйте для использования встроенного АЦП
+#define IN_I2S_BUILTIN
+
+#ifdef IN_I2S_BUILTIN
+
+#define IN_ADC_CHANNEL ADC1_CHANNEL_6 // GPIO34
+#define IN_ADC_ATTEN ADC_ATTEN_DB_0
+
+#else
 
 /* Настройки устройства ввода звука, подключенного по I2S шине.
  *
  * Проверено с модулем на основе INMP441.
  */
-#define IN_I2S_PORT I2S_NUM_1    // Номер порта I2S, используемого для ввода звука
-#define IN_SAMPLE_RATE 16000     // Чатота дискретизации
 #define IN_I2S_DIN 35            // Номер вывода контроллера, подключенного к линии данных устройства ввода (SD на INMP441)
 #define IN_I2S_BCLK 33           // Номер вывода контроллера, подключенного к линии bit clock устройства ввода (SCK на INMP441)
 #define IN_I2S_LRC 32            // Номер вывода контроллера, подключенного к линии left/right clock устройства ввода (WS на INMP441)
+
+#endif
+
+#define IN_I2S_PORT I2S_NUM_0    // Номер порта I2S, используемого для ввода звука
+#define IN_SAMPLE_RATE 16000     // Чатота дискретизации
 #define IN_DMA_BUFFER_COUNT 8    // Количество DMA-буферов, создаваемых драйвером
 #define IN_DMA_BUFFER_SIZE 256   // Размер одного DMA-буфера в сэмплах
 #define IN_SEND_BUFFER_SIZE 256  // Размер буфера отправляемого сообщения в сэмплах

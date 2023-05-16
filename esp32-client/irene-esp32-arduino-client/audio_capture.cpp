@@ -2,6 +2,7 @@
 #include <memory>
 
 #include <driver/i2s.h>
+#include <driver/adc.h>
 
 #include <Arduino_JSON.h>
 #include <ArduinoWebsockets.h>
@@ -78,7 +79,11 @@ void AudioCapturing::enter() {
   sendBufferFilled = 0;
 
   i2s_config_t conf = {
+#ifdef IN_I2S_BUILTIN
+    .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN),
+#else
     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
+#endif
     .sample_rate = IN_SAMPLE_RATE,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
     .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
@@ -91,6 +96,13 @@ void AudioCapturing::enter() {
 
   i2s_driver_install(IN_I2S_PORT, &conf, 0, nullptr);
 
+#ifdef IN_I2S_BUILTIN
+  i2s_set_adc_mode(ADC_UNIT_1, IN_ADC_CHANNEL);
+
+  adc1_config_channel_atten(IN_ADC_CHANNEL, IN_ADC_ATTEN);
+
+  i2s_adc_enable(IN_I2S_PORT);
+#else
   i2s_pin_config_t pin_conf = {
     .mck_io_num = I2S_PIN_NO_CHANGE,
     .bck_io_num = IN_I2S_BCLK,
@@ -100,10 +112,13 @@ void AudioCapturing::enter() {
   };
 
   i2s_set_pin(IN_I2S_PORT, &pin_conf);
+#endif
 };
 
 void AudioCapturing::leave() {
   State::leave();
+
+  i2s_adc_disable(IN_I2S_PORT);
 
   i2s_driver_uninstall(IN_I2S_PORT);
 };
