@@ -30,7 +30,7 @@
 #define PLAYBACK_VOLUME 21  // Громкость воспроизведения
 
 // Расскомментируйте для использования встроенного АЦП
-#define IN_I2S_BUILTIN
+//#define IN_I2S_BUILTIN
 
 #ifdef IN_I2S_BUILTIN
 
