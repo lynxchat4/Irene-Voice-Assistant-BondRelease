@@ -14,6 +14,7 @@ class NumeralFormsRU(NamedTuple):
     neuter_animated: Optional[KnownFormsRU] = None
 
     def get_form(self, gender: GenderCode, case: WordCaseRU, animated: bool) -> str:
+        # TODO: Добавить поддержку множественных существительных e.g. "одни штаны"
         assert gender in {MALE.code, FEMALE.code, NEUTER.code}
 
         form: Optional[KnownFormsRU] = None
@@ -167,4 +168,9 @@ MILLION = FullKnownFormsRU(
     singular=KnownFormsRU("миллион", "миллиона", "миллиону", "миллион", "миллионом", "миллионе"),
     plural=KnownFormsRU("миллионы", "миллионов", "миллионам", "миллионы", "миллионами", "миллионах"),
     gender=MALE.code,
+)
+
+MAGNITUDES: tuple[tuple[int, FullKnownFormsRU], ...] = (
+    (1_000_000, MILLION),
+    (1_000, THOUSAND)
 )
