@@ -4,12 +4,22 @@ import snapshottest  # type: ignore
 
 from irene.constants.gender import FEMALE, MALE, NEUTER
 from irene.constants.word_forms import WordCaseRU, FullKnownFormsRU, KnownFormsRU
-from irene.utils.pronounce_numbers_ru import pronounce_sub_thousand
+from irene.utils.pronounce_numbers_ru import pronounce_sub_thousand, pronounce_integer
 
 THING = FullKnownFormsRU(
     singular=KnownFormsRU("штуковина", "штуковины", "штуковине", "штуковину", "штуковиной", "штуковине"),
     plural=KnownFormsRU("штуковины", "штуковин", "штуковинам", "штуковины", "штуковинами", "штуковинах"),
     gender=FEMALE.code,
+)
+
+CALLIPERS = FullKnownFormsRU(
+    singular=KnownFormsRU(
+        "штангенциркуль", "штангенциркуля", "штангенциркулю", "штангенциркуль", "штангенциркулем", "штангенциркуле"
+    ),
+    plural=KnownFormsRU(
+        "штангенциркули", "штангенциркулей", "штангенциркулям", "штангенциркули", "штангенциркулями", "штангенциркулях"
+    ),
+    gender=MALE.code,
 )
 
 SUN = FullKnownFormsRU(
@@ -49,6 +59,9 @@ class PronounceNumbersSubThousandRuTest(snapshottest.TestCase):
     def test_thing_sub_100(self):
         self._test_for_word(THING)
 
+    def test_callipers_sub_100(self):
+        self._test_for_word(CALLIPERS)
+
     def test_sun_sub_100(self):
         self._test_for_word(SUN)
 
@@ -57,6 +70,26 @@ class PronounceNumbersSubThousandRuTest(snapshottest.TestCase):
 
     def test_female_cat_sub_100(self):
         self._test_for_word(CAT_F)
+
+
+class PronounceIntegerTest(snapshottest.TestCase):
+    test_numbers = (999_000_000, 1_000_000, 999_000_001, 1_000, 1_011, 1_002, 1_008)
+
+    def _test_word(self, word: FullKnownFormsRU):
+        result = '\n'.join(
+            case.format_check_phrase(' '.join(pronounce_integer(number, word, case)))
+            for number in self.test_numbers
+            for case in WordCaseRU
+        )
+
+        self.assertMatchSnapshot(result)
+
+    def test_thing(self):
+        self._test_word(THING)
+
+    def test_too_large(self):
+        with self.assertRaises(ValueError):
+            pronounce_integer(1_000_000_000, THING, WordCaseRU.GENITIVE)
 
 
 if __name__ == '__main__':
