@@ -16,9 +16,9 @@ from irene.plugin_loader.run_operation import call_until_first_result, call_all
 
 class PluginDiscoveryPlugin(MagicPlugin):
     name = 'discover_plugins'
-    version = '1.0.1'
+    version = '1.0.2'
 
-    _logger = getLogger('discover_plugins')
+    _logger = getLogger(name)
 
     class _Config(TypedDict):
         pluginPaths: list[str]
@@ -38,6 +38,29 @@ class PluginDiscoveryPlugin(MagicPlugin):
         ],
         "excludePlugins": []
     }
+
+    config_comment = """
+    Настройки поиска и загрузки пользовательских плагинов.
+
+    Доступные параметры:
+    - `pluginPaths`       - шаблоны путей файлов плагинов
+    - `appendPythonPath`  - шаблоны путей папок, которые будут добавлены в PYTHONPATH.
+                            Если зависимости плагинов ставятся в папку, не находящуюся в PYTHONPATH, то путь к этой
+                            папке нужно указать здесь.
+    - `excludePlugins`    - список плагинов, которые загружать не нужно. См. далее.
+    
+    ## Отключение плагинов
+
+    Для отключения плагина, в excludePlugins можно указать:
+
+    - имя файла плагина, с расширением (например, plugin_tts_cache.py) или без (например, plugin_tts_cache).
+      При возможности, стоит использовать этот способ т.к. в этом случае файл плагина не будет импортирован, что ускорит
+      загрузку всего приложения.
+    - имя плагина, как указано в его переменной name (например, tts_cache)
+    - имя плагина с версией (например, tts_cache@0.2.0).
+      Такой вариант можно использовать чтобы отключить стандартную версию плагина, положив свою версию в одну из папок,
+      указанных в pluginPaths.
+    """
 
     def __init__(self) -> None:
         super().__init__()
