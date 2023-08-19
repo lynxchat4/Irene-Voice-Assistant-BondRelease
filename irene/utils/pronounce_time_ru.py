@@ -1,7 +1,7 @@
 from datetime import time
-from typing import NamedTuple, Optional, Collection
+from typing import NamedTuple, Optional, Collection, Callable
 
-from irene.constants.time_units_ru import MINUTE
+from irene.constants.time_units_ru import MINUTE, HOUR
 from irene.constants.word_forms import WordCaseRU
 from irene.utils.pronounce_numbers_ru import pronounce_integer
 
@@ -49,8 +49,8 @@ def pronounce_time_ru(
         half_enabled=True,
         half_short=True,
         half_tolerance_minutes=0,
-        quoter_enabled=True,
-        quoter_tolerance_minutes=0,
+        quarter_enabled=True,
+        quarter_tolerance_minutes=0,
         day_time_enabled=True,
         negative_enabled=True,
         negative_threshold=20,
@@ -60,6 +60,10 @@ def pronounce_time_ru(
         pronounce_exactly=True,
         exactly_before=True,
         exactly_tolerance_minutes=0,
+        digital_format=False,
+        digital_format_separator: Optional[str] = "и",
+        digital_pronounce_minute_units=False,
+        digital_skip_minutes_when_zero=True,
 ) -> Collection[str]:
     result = []
 
@@ -89,33 +93,68 @@ def pronounce_time_ru(
 
             append_hour_units_and_day_time(forms, False)
 
-    def append_exactly(forms: _HourForms):
+    def append_exact_hour_digital(hour: int):
         """
-        "[ровно] девять [часов] [утра] [ровно]"
+        "восемнадцать [часов]"
+        """
+        if midnight_enabled and hour == 0:
+            result.append("полночь")
+        elif midday_enabled and hour == 12:
+            result.append("полдень")
+        else:
+            result.extend(pronounce_integer(hour, HOUR, WordCaseRU.NOMINATIVE))
+
+            if not pronounce_hour_units:
+                result.pop()
+
+    def append_exactly(cb: Callable, *args):
+        """
+        "[ровно] () [ровно]"
         """
         if pronounce_exactly and exactly_before:
             result.append("ровно")
 
-        append_full(forms)
+        cb(*args)
 
         if pronounce_exactly and not exactly_before:
             result.append("ровно")
 
-    if t.minute <= exactly_tolerance_minutes:
+    if digital_format:
+        if digital_skip_minutes_when_zero and t.minute <= exactly_tolerance_minutes:
+            append_exactly(append_exact_hour_digital, t.hour)
+        elif digital_skip_minutes_when_zero and t.minute >= (60 - exactly_tolerance_minutes):
+            append_exactly(append_exact_hour_digital, (t.hour + 1) % 24)
+        else:
+            # "восемнадцать [часов] (и) тридцать [минут]"
+            result.extend(pronounce_integer(t.hour, HOUR, WordCaseRU.NOMINATIVE))
+            if not pronounce_hour_units:
+                result.pop()
+
+            if digital_format_separator is not None:
+                result.append(digital_format_separator)
+
+            if t.minute < 10 and not digital_pronounce_minute_units:
+                result.append("ноль")
+
+            result.extend(pronounce_integer(t.minute, MINUTE, WordCaseRU.NOMINATIVE))
+
+            if not digital_pronounce_minute_units:
+                result.pop()
+    elif t.minute <= exactly_tolerance_minutes:
         # "[ровно] девять [часов] [утра] [ровно]" @ 09:00; 09:01, exactly_tolerance_minutes >= 1
-        append_exactly(_HOUR_FORMS[t.hour])
+        append_exactly(append_full, _HOUR_FORMS[t.hour])
     else:
         next_hour_forms: _HourForms = _HOUR_FORMS[(t.hour + 1) % len(_HOUR_FORMS)]
 
         if t.minute >= (60 - exactly_tolerance_minutes):
             # "[ровно] девять [часов] [утра] [ровно]" @ 08:59, exactly_tolerance_minutes >= 1
-            append_exactly(next_hour_forms)
+            append_exactly(append_full, next_hour_forms)
         elif half_enabled and abs(t.minute - 30) <= half_tolerance_minutes:
             # "пол[овина] девятого [часа] [утра]" @ 08:30
             result.append("пол" if half_short else "половина")
             result.append(next_hour_forms.partial)
             append_hour_units_and_day_time(next_hour_forms, False)
-        elif quoter_enabled and abs(t.minute - 15) <= quoter_tolerance_minutes:
+        elif quarter_enabled and abs(t.minute - 15) <= quarter_tolerance_minutes:
             # "четверть девятого [часа] [утра]" @ 08:15
             result.append("четверть")
             result.append(next_hour_forms.partial)
@@ -124,7 +163,7 @@ def pronounce_time_ru(
             # "без (четверти|пятнадцати [минут]) девять [часов] [утра]" @ 08:45
             result.append("без")
 
-            if quoter_enabled and abs(t.minute - 45) <= quoter_tolerance_minutes:
+            if quarter_enabled and abs(t.minute - 45) <= quarter_tolerance_minutes:
                 result.append("четверти")
             else:
                 minutes_left = 60 - t.minute
