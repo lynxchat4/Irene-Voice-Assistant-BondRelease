@@ -19,9 +19,10 @@ _HANDLED_SIGNALS = (
 
 async def _wait_for_interrupt() -> None:
     """
-    Возвращает значение при получении приложением сигнала прерывания.
+    Возвращает значение при получении приложением сигнала прерывания (SIGINT или SIGTERM).
 
-    Task с вызовом этой функции желательно отменить как только слушать сигналы становится не нужно, особенно на Windows.
+    Task с вызовом этой функции желательно отменить как только слушать сигналы становится не нужно, так как для
+    достижения поведения, близкого к корректному, эта функция вынуждена творить какую-то грязь.
     """
     loop = asyncio.get_running_loop()
     future = loop.create_future()
@@ -31,9 +32,26 @@ async def _wait_for_interrupt() -> None:
         loop.call_soon_threadsafe(future.set_result, None)
 
     try:
-        for sig in _HANDLED_SIGNALS:
-            loop.add_signal_handler(sig, handle_signal, sig, None)
+        timeout = 1
+        while True:
+            for sig in _HANDLED_SIGNALS:
+                # :facepalm:
+                # add_signal_handler не добавляет ещё один обработчик, а заменяет другой обработчик если он был.
+                # Способа проверить, был ли обработчик заменён кем-то ещё нет, поэтому просто периодически ставим свой
+                # обработчик заново.
+                loop.add_signal_handler(sig, handle_signal, sig, None)
+
+            done, _ = await asyncio.wait([future], timeout=timeout)
+
+            if len(done) > 0:
+                return await done[0]
+
+            # Если кто-то ещё и установит свой обработчик, то, скорее всего ближе к началу работы программы.
+            # Так что делаем повторные попытки реже со временем, что бы не слишком грузить процессор.
+            timeout *= 2
     except NotImplementedError:
+        _logger.debug("add_signal_handler не поддерживается")
+
         # Код для работы под Windows. Позаимствовано и адаптировано из исходников Uvicorn.
         for sig in _HANDLED_SIGNALS:
             signal.signal(sig, handle_signal)
@@ -61,8 +79,6 @@ async def _wait_for_interrupt() -> None:
             return
         finally:
             signal.signal = signal_orig
-
-    await future
 
 
 async def _run_with_interrupts(future: Awaitable):
