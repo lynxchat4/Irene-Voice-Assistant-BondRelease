@@ -36,11 +36,11 @@ RUN groupadd --gid 1001 python && useradd --create-home python --uid 1001 --gid 
 # Позволяем приложению читать и писать в папку /irene даже если в неё ничего не смонтировано
 RUN mkdir /irene && chown 1001:1001 /irene
 
+COPY ./requirements-docker.txt ./requirements.txt
+RUN --mount=type=cache,target=/pip-cache pip install --cache-dir=/pip-cache -r ./requirements.txt
+
 USER python:python
 WORKDIR /home/python
-
-COPY ./requirements-docker.txt ./requirements.txt
-RUN --mount=type=cache,target=/home/python/.cache,uid=1001,gid=1001 pip install -r ./requirements.txt
 
 COPY irene ./irene
 COPY irene_plugin_web_face ./irene_plugin_web_face
@@ -50,8 +50,8 @@ COPY irene_plugin_local_speech_face ./irene_plugin_local_speech_face
 COPY docker-config ./config
 
 COPY --link --from=frontend-builder /home/frontend/dist/ ./irene_plugin_web_face_frontend/frontend-dist/
-COPY --link --chown=1001:1001 ./resources .
-COPY --link --chown=1001:1001 --from=ssl-generator /home/generator/ssl/ ./ssl/
+COPY --link --chown=1001:1001 --chmod=777 ./resources .
+COPY --link --chown=1001:1001 --chmod=644 --from=ssl-generator /home/generator/ssl/ ./ssl/
 
 EXPOSE 8086
 
