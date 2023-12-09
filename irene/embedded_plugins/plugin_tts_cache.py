@@ -252,7 +252,7 @@ def init(*_args, **_kwargs):
 async def run(*_args, **_kwargs):
     try:
         while True:
-            await asyncio.sleep(config['cleanup_interval'] * 360)
+            await asyncio.sleep(config['cleanup_interval'] * 60 * 60)
 
             try:
                 await asyncio.get_running_loop().run_in_executor(None, _do_cleanup)
