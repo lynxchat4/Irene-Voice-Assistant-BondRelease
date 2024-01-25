@@ -1,6 +1,5 @@
-from collections import Callable
 from logging import getLogger
-from typing import Optional, Iterable, Any, TypedDict
+from typing import Optional, Iterable, Any, TypedDict, Callable
 
 from irene.brain.abc import AudioOutputChannel, OutputChannelNotFoundError
 from irene.face.abc import FileWritingTTS

@@ -1,10 +1,9 @@
 import sys
-from collections import Iterable
 from glob import iglob
 from os.path import abspath
 from pathlib import Path
 from random import choice
-from typing import Optional, Union
+from typing import Optional, Union, Iterable
 
 PathVariableValue = Union[str, Iterable[str]]
 

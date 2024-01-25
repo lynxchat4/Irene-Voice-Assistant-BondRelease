@@ -1,11 +1,10 @@
 import sys
-from collections import Iterable
 from importlib.util import spec_from_file_location, module_from_spec
 from inspect import isclass
 from logging import getLogger
 from os.path import isfile, basename, splitext
 from types import ModuleType
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, Iterable
 
 from irene.plugin_loader.abc import PluginManager, Plugin, OperationStep
 from irene.plugin_loader.errors import PluginExcludedException
