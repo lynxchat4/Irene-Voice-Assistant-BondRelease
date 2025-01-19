@@ -18,7 +18,7 @@ class TelegramAudioOutputPlugin(MagicPlugin):
     Обеспечивает отправку аудио-файлов и текста, озвученного через TTS в Telegram.
     """
     name = 'telegram_output_audio'
-    version = '0.2.0'
+    version = '0.2.1'
 
     _logger = getLogger(name)
 
