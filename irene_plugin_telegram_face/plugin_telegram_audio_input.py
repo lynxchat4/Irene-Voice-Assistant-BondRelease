@@ -1,7 +1,7 @@
 import json
 from io import BytesIO
 from logging import getLogger
-from typing import Optional, Callable
+from typing import Optional, Callable, TypedDict
 
 import soundfile  # type: ignore
 from telebot import TeleBot  # type: ignore
@@ -17,6 +17,7 @@ from irene.utils.audio_converter import AudioConverter
 from irene_plugin_telegram_face.inbound_messages import TelegramMessage
 
 
+
 class TelegramAudioInputPlugin(MagicPlugin):
     """
     Обеспечивает приём голосовых сообщений из Telegram.
@@ -25,7 +26,20 @@ class TelegramAudioInputPlugin(MagicPlugin):
     """
 
     name = 'telegram_input_audio'
-    version = '0.1.0'
+    version = '0.1.1'
+
+    config_comment = """
+    Настройки приёма голосовых сообщений из Telegram.
+
+    Доступны следующие параметры:
+    - `recogniseTextReply`  - слать сообщения с распознаным текстом из голосового сообщения
+    """
+    class _Config(TypedDict):
+        recogniseTextReply: bool
+        
+    config: _Config = {
+        'recogniseTextReply': True,        
+    }
 
     _logger = getLogger(name)
 
@@ -88,6 +102,15 @@ class TelegramAudioInputPlugin(MagicPlugin):
                 return
 
             self._logger.info("Распознано голосовое сообщение \"%s\"", text)
+
+
+            if self.config['recogniseTextReply']:
+                bot.send_message(
+                        message.chat.id,
+                        f"Слышу: {text}",
+                        #reply_to_message_id=message.message_id,
+                    )
+            
 
             outputs: list[OutputChannel] = call_all_as_wrappers(
                 pm.get_operation_sequence(

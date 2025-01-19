@@ -26,6 +26,7 @@ class TelegramAudioOutputPlugin(MagicPlugin):
     Настройки отправки аудио в Telegram.
     
     Доступные параметры:
+    - `NoSendVoice`           - Не отправлять ответ голосом. Будет отправлен ответ только в текстовом виде.
     - `replyInPrivate`        - слать сообщения как ответы в приватных чатах
     - `replyInGroups`         - слать сообщения как ответы в групповых чатах
     - `trySendVoice`          - пытаться отправлять аудио как голосовые сообщения.
@@ -37,12 +38,14 @@ class TelegramAudioOutputPlugin(MagicPlugin):
     """
 
     class _Config(TypedDict):
+        NoSendVoice: bool
         replyInPrivate: bool
         replyInGroups: bool
         trySendVoice: bool
         voiceProfileSelector: dict[str, Any]
 
     config: _Config = {
+        'NoSendVoice': False,
         'replyInPrivate': False,
         'replyInGroups': True,
         'trySendVoice': True,
@@ -70,6 +73,11 @@ class TelegramAudioOutputPlugin(MagicPlugin):
             *args,
             **kwargs
     ):
+        
+        if self.config['NoSendVoice']:
+        # Пропустить выполнение, если NoSendVoice включен
+            return nxt(channels, message, bot, pm, *args, **kwargs)
+        
         converter: Optional[AudioConverter] = None
 
         if self.config['trySendVoice']:
