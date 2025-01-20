@@ -108,7 +108,6 @@ class TelegramAudioInputPlugin(MagicPlugin):
                 bot.send_message(
                         message.chat.id,
                         f"Слышу: {text}",
-                        #reply_to_message_id=message.message_id,
                     )
             
 
