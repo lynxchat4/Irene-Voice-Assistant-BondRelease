@@ -17,7 +17,6 @@ from irene.utils.audio_converter import AudioConverter
 from irene_plugin_telegram_face.inbound_messages import TelegramMessage
 
 
-
 class TelegramAudioInputPlugin(MagicPlugin):
     """
     Обеспечивает приём голосовых сообщений из Telegram.
