@@ -38,7 +38,7 @@ class TelegramAudioInputPlugin(MagicPlugin):
         recogniseTextReply: bool
         
     config: _Config = {
-        'recogniseTextReply': True,        
+        'recogniseTextReply': False,        
     }
 
     _logger = getLogger(name)
