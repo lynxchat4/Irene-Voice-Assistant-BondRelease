@@ -33,11 +33,12 @@ class TelegramAudioInputPlugin(MagicPlugin):
     Доступны следующие параметры:
     - `recogniseTextReply`  - слать сообщения с распознаным текстом из голосового сообщения
     """
+
     class _Config(TypedDict):
         recogniseTextReply: bool
-        
+
     config: _Config = {
-        'recogniseTextReply': False,        
+        'recogniseTextReply': False,
     }
 
     _logger = getLogger(name)
@@ -75,7 +76,7 @@ class TelegramAudioInputPlugin(MagicPlugin):
         tele_file = bot.get_file(message.voice.file_id)
 
         with soundfile.SoundFile(
-            BytesIO(bot.download_file(tele_file.file_path)),
+                BytesIO(bot.download_file(tele_file.file_path)),
         ) as sf:
             recognizer = KaldiRecognizer(model, sf.samplerate)
 
@@ -102,13 +103,11 @@ class TelegramAudioInputPlugin(MagicPlugin):
 
             self._logger.info("Распознано голосовое сообщение \"%s\"", text)
 
-
             if self.config['recogniseTextReply']:
                 bot.send_message(
-                        message.chat.id,
-                        f"Слышу: {text}",
-                    )
-            
+                    message.chat.id,
+                    f"Слышу: {text}",
+                )
 
             outputs: list[OutputChannel] = call_all_as_wrappers(
                 pm.get_operation_sequence(
