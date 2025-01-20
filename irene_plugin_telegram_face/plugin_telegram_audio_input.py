@@ -35,10 +35,10 @@ class TelegramAudioInputPlugin(MagicPlugin):
     """
 
     class _Config(TypedDict):
-        recogniseTextReply: bool
+        recognizeTextReply: bool
 
     config: _Config = {
-        'recogniseTextReply': False,
+        'recognizeTextReply': False,
     }
 
     _logger = getLogger(name)
@@ -103,7 +103,7 @@ class TelegramAudioInputPlugin(MagicPlugin):
 
             self._logger.info("Распознано голосовое сообщение \"%s\"", text)
 
-            if self.config['recogniseTextReply']:
+            if self.config['recognizeTextReply']:
                 bot.send_message(
                     message.chat.id,
                     f"Слышу: {text}",
