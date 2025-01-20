@@ -111,12 +111,14 @@ class TelegramAudioInputPlugin(MagicPlugin):
 
             outputs: list[OutputChannel] = call_all_as_wrappers(
                 pm.get_operation_sequence(
-                    'telegram_add_message_reply_channels'),
+                    'telegram_add_message_reply_channels'
+                ),
                 [],
                 message,
                 bot,
                 pm,
             )
 
-            send_message(TelegramMessage(
-                text, message, bot, OutputPoolImpl(outputs)))
+            send_message(
+                TelegramMessage(text, message, bot, OutputPoolImpl(outputs))
+            )
