@@ -1,7 +1,7 @@
 import json
 from io import BytesIO
 from logging import getLogger
-from typing import Optional, Callable
+from typing import Optional, Callable, TypedDict
 
 import soundfile  # type: ignore
 from telebot import TeleBot  # type: ignore
@@ -25,7 +25,21 @@ class TelegramAudioInputPlugin(MagicPlugin):
     """
 
     name = 'telegram_input_audio'
-    version = '0.1.0'
+    version = '0.1.1'
+
+    config_comment = """
+    Настройки приёма голосовых сообщений из Telegram.
+
+    Доступны следующие параметры:
+    - `recognizeTextReply`  - слать сообщения с распознанным текстом из голосового сообщения
+    """
+
+    class _Config(TypedDict):
+        recognizeTextReply: bool
+
+    config: _Config = {
+        'recognizeTextReply': False,
+    }
 
     _logger = getLogger(name)
 
@@ -62,7 +76,7 @@ class TelegramAudioInputPlugin(MagicPlugin):
         tele_file = bot.get_file(message.voice.file_id)
 
         with soundfile.SoundFile(
-            BytesIO(bot.download_file(tele_file.file_path)),
+                BytesIO(bot.download_file(tele_file.file_path)),
         ) as sf:
             recognizer = KaldiRecognizer(model, sf.samplerate)
 
@@ -89,14 +103,22 @@ class TelegramAudioInputPlugin(MagicPlugin):
 
             self._logger.info("Распознано голосовое сообщение \"%s\"", text)
 
+            if self.config['recognizeTextReply']:
+                bot.send_message(
+                    message.chat.id,
+                    f"Слышу: {text}",
+                )
+
             outputs: list[OutputChannel] = call_all_as_wrappers(
                 pm.get_operation_sequence(
-                    'telegram_add_message_reply_channels'),
+                    'telegram_add_message_reply_channels'
+                ),
                 [],
                 message,
                 bot,
                 pm,
             )
 
-            send_message(TelegramMessage(
-                text, message, bot, OutputPoolImpl(outputs)))
+            send_message(
+                TelegramMessage(text, message, bot, OutputPoolImpl(outputs))
+            )
