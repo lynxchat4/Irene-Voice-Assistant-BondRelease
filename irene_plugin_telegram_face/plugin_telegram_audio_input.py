@@ -31,7 +31,7 @@ class TelegramAudioInputPlugin(MagicPlugin):
     Настройки приёма голосовых сообщений из Telegram.
 
     Доступны следующие параметры:
-    - `recogniseTextReply`  - слать сообщения с распознаным текстом из голосового сообщения
+    - `recognizeTextReply`  - слать сообщения с распознанным текстом из голосового сообщения
     """
 
     class _Config(TypedDict):
