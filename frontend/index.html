@@ -10,5 +10,27 @@
 <body style="margin: 0;">
 <div id="app"></div>
 <script type="module" src="/src/main.ts"></script>
+<script>
+    //Скрипт для активации Wake Lock - экран телефона не гаснет
+    if ('wakeLock' in navigator) {
+        let wakeLock = null;
+        const requestWakeLock = async () => {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {
+                });
+            } catch (err) {
+                console.error(`${err.name}, ${err.message}`);
+            }
+        };
+        requestWakeLock();
+        // Обновляем Wake Lock при изменении видимости страницы
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        });
+    }
+</script>
 </body>
 </html>
