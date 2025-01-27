@@ -20,7 +20,7 @@
                 wakeLock.addEventListener('release', () => {
                 });
             } catch (err) {
-                console.error(`${err.name}, ${err.message}`);
+                console.error("Ошибка при запросе WakeLock", err);
             }
         };
         requestWakeLock();
