@@ -24,6 +24,7 @@ config: dict[str, Any] = {
     'hideConfiguration': False,
     'customCssPaths': ['{irene_home}/frontend/*.css'],
     'customCss': '\n\n',
+    'requestWakeLock': True,
 }
 
 config_comment = """
@@ -43,6 +44,7 @@ config_comment = """
                             только скрывает графический интерфейс на веб-странице.
 - `customCssPaths`        - шаблоны путей к файлам, содержащим пользовательские CSS-стили.
 - `customCss`             - пользовательские CSS-стили.
+- `requestWakeLock`       - включить запрос WakeLock (запретить браузеру блокировать экран пока открыта страница).
 """
 
 _DIST_DIRS = [
