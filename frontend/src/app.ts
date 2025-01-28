@@ -18,6 +18,7 @@ import { inputStreamingStateMachine } from './audio-input-streaming/sm';
 import z from 'zod';
 import { fetchConfig, FRONTEND_CONFIG_SCOPE } from './components/config/service';
 import { streamingSupported } from './audio-input-streaming/streamingService';
+import { enableWakeLock } from './components/wakeLock';
 
 
 const FrontendConfig = z.object({
@@ -26,6 +27,7 @@ const FrontendConfig = z.object({
     audioOutputEnabled: z.boolean().default(true),
     microphoneSampleRate: z.number(),
     hideConfiguration: z.boolean().default(false),
+    requestWakeLock: z.boolean().default(true),
 });
 
 const loadConfig: () => Promise<z.TypeOf<typeof FrontendConfig>> = () => new Promise(resolve => {
@@ -96,7 +98,11 @@ const getProtocolRequirements = ({
 export const initApplication = async () => {
     const config = await loadConfig();
 
-    const { microphoneSampleRate, hideConfiguration } = config;
+    const { microphoneSampleRate, hideConfiguration, requestWakeLock } = config;
+
+    if (requestWakeLock) {
+      enableWakeLock();
+    }
 
     const app = createApp(App);
 
