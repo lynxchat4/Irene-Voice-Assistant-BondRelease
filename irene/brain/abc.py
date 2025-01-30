@@ -147,7 +147,32 @@ class InboundMessage(Metadata, metaclass=ABCMeta):
         return super().meta
 
 
-class Brain(metaclass=ABCMeta):
+class VAApiBase(ABC):
+    """
+    API голосового ассистента, доступный вне обработчиков команд.
+    """
+
+    @abstractmethod
+    def submit_active_interaction(
+            self,
+            interaction: 'VAActiveInteractionSource',
+            *,
+            related_message: Optional['InboundMessage'] = None,
+    ):
+        """
+        Начинает активное взаимодействие.
+
+        Args:
+            interaction:
+            related_message:
+                ранее полученное сообщение, связанное с взаимодействием.
+                Это сообщение будет доступно через метод ``get_message`` взаимодействиям, использующим ``VAApiExt``.
+                Если сообщение не передано явно, то реализация ``VAApi`` может попытаться обнаружить последнее
+                полученное сообщение и использовать его.
+        """
+
+
+class Brain(VAApiBase, metaclass=ABCMeta):
     """
     API голосового ассистента, доступный плагинам, реализующим средства ввода/вывода (распознание/синтез речи, обмен
     сообщениями через мессенджеры и т.д.).
@@ -176,7 +201,7 @@ class Brain(metaclass=ABCMeta):
         """
 
 
-class VAApi(metaclass=ABCMeta):
+class VAApi(VAApiBase, ABC):
     """
     API голосового ассистента, доступный плагинам, добавляющим дополнительные команды/скиллы.
     """
@@ -233,25 +258,6 @@ class VAApi(metaclass=ABCMeta):
         ch, *_ch = self.get_outputs().get_channels(AudioOutputChannel)  # type: ignore
 
         ch.send_file(file_path, **kwargs)
-
-    @abstractmethod
-    def submit_active_interaction(
-            self,
-            interaction: 'VAActiveInteractionSource',
-            *,
-            related_message: Optional['InboundMessage'] = None,
-    ):
-        """
-        Начинает активное взаимодействие.
-
-        Args:
-            interaction:
-            related_message:
-                ранее полученное сообщение, связанное с взаимодействием.
-                Это сообщение будет доступно через метод ``get_message`` взаимодействиям, использующим ``VAApiExt``.
-                Если сообщение не передано явно, то реализация ``VAApi`` может попытаться обнаружить последнее
-                полученное сообщение и использовать его.
-        """
 
 
 class VAApiExt(VAApi, ABC):
@@ -527,12 +533,13 @@ class VAContext(metaclass=ABCMeta):
 
 T = TypeVar('T')
 
-# VAContextSourcesDict = dict[str, 'VAContextSource'] # пока не поддерживается в mypy
-VAContextSourcesDict = dict[str, Any]
+VAContextSourcesDict = dict[str, 'VAContextSource']
 
-# yield type, send type, return type
-VAContextGenerator = Generator[Optional[Union[str,
-                                              Tuple[str, float]]], str, Optional[str]]
+# yield type, send type, return type.
+# yield type. Генератор может yield'ить фразу, которую нужно сказать (в виде строки) или tuple из фразы и таймаута
+# send type. Генератор будет получать из yield произнесённый/введённый пользователем текст
+# return type. Генератор может вернуть последнюю фразу, которую нужно произнести
+VAContextGenerator = Generator[Optional[Union[str, Tuple[str, float]]], str, Optional[str]]
 
 VAContextSource = Union[
     VAContext,
