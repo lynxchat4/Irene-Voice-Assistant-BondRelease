@@ -86,6 +86,7 @@ class BrainImpl(Brain):
         self._outputs = CompositeOutputPool((predefined_outputs,))
         self._api_provider = _VAApiProvider(
             outputs=self._outputs, context_constructor=context_constructor)
+        self._context_constructor = context_constructor
 
         self._context_manager = VAContextManager(
             self._api_provider.get_api(),
@@ -101,6 +102,18 @@ class BrainImpl(Brain):
             self._ticker = TimeoutTicker(
                 self._context_manager, config['timeoutCheckInterval'])
             self._ticker.start()
+
+    def submit_active_interaction(
+            self,
+            interaction: VAActiveInteractionSource, *,
+            related_message: Optional['InboundMessage'] = None
+    ):
+        ai = construct_active_interaction(
+            interaction,
+            related_message=related_message,
+            construct_context=self._context_constructor,
+        )
+        self._context_manager.process_active_interaction(ai)
 
     def _process_message(self, message: InboundMessage):
         self._context_manager.process_command(message)
