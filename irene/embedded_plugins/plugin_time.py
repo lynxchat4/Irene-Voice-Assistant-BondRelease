@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import TypedDict, Optional
 
+from dateutil.tz import tzlocal
+
 from irene import VAApiExt
 from irene.utils.probabilistic_flag import ProbabilisticFlag, get_probabilistic_flag
 from irene.utils.pronounce_time_ru import pronounce_time_ru
 
 name = 'skill_time'
-version = '3.0.0'
+version = '3.1.0'
 
 
 class _Config(TypedDict):
@@ -90,8 +92,10 @@ config_comment = """
 
 
 def _play_time(va: VAApiExt, _phrase: str):
+    time = datetime.now(tzlocal()).time()
+
     pronounced_time = list(pronounce_time_ru(
-        datetime.now().time(),
+        time,
         half_tolerance_minutes=config['half_tolerance_minutes'],
         quarter_tolerance_minutes=config['quarter_tolerance_minutes'],
         negative_threshold=config['negative_threshold'],
