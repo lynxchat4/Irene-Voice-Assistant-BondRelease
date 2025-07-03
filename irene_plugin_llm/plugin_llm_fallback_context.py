@@ -5,7 +5,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
-from langgraph.checkpoint.memory import InMemorySaver
+from langchain_core.utils.function_calling import convert_to_openai_tool
 from langgraph.graph import MessagesState
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
@@ -47,9 +47,27 @@ class LLMFallbackContextPlugin(MagicPlugin):
         "debug": True,
     }
 
+    config_comment = """
+    Настройки плагина подключения LLM для выполнения команд, нераспознанных иными средствами.
+    
+    Параметры:
+    - `enabled` - включает/выключает плагин.
+                Для применения нужен перезапуск приложения.
+                Альтернативно, можно включать/выключать плагин через настройки загрузчика плагинов.
+    - `llm_settings` - настройки LLM.
+                Обычно содержит поле `type`, указывающее тип адаптера модели/какой плагин используется
+                для подключения к модели, например, `"ollama"` или `"openai"`.
+                Так же, может содержать название конкретной модели (обычно, поле `model`) и дополнительные параметры
+                для неё - например, `temperature`.
+                Список поддерживаемых параметров зависит от конкретного адаптера/конкретной модели.
+    - `system_prompt` - системный промпт для LLM.
+    - `debug` - включает режим отладки агента.
+                Когда отладка включена, в консоль будет выводиться подробная информация об изменении состояния
+                графа агента.
+    """
+
     def __init__(self):
         super().__init__()
-        self._cp = InMemorySaver()
 
     def init(self, pm: PluginManager, *_args, **_kwargs):
         self._tools = self._load_tools(pm)
@@ -88,7 +106,6 @@ class LLMFallbackContextPlugin(MagicPlugin):
             model=self._get_llm(pm),
             tools=self._load_tools(pm),
             prompt=self.config['system_prompt'],
-            checkpointer=self._cp,
             debug=self.config['debug'],
         )
 
@@ -112,17 +129,13 @@ class LLMFallbackContextPlugin(MagicPlugin):
                 assert isinstance(message.content, str)
                 return message.content
 
-            user_msg = initial_msg
+            state: MessagesState = {"messages": [HumanMessage(initial_msg)]}
 
             while True:
-                state = graph.invoke(
-                    {
-                        "messages": [HumanMessage(user_msg)],
-                    },
-                    self._get_agent_config(va, pm),
-                )
+                state = graph.invoke(state, self._get_agent_config(va, pm))
 
-                user_msg = yield _response_from_state(state)
+                user_response = yield _response_from_state(state)
+                state['messages'].append(HumanMessage(user_response))
 
         return construct_context(chat)
 
@@ -139,3 +152,18 @@ class LLMFallbackContextPlugin(MagicPlugin):
         if self.config['enabled']:
             ctx = self._make_chat_context(pm)
         return nxt(ctx, pm, *args, **kwargs)
+
+    def register_fastapi_endpoints(self, router, *_args, **_kwargs):
+        from fastapi import APIRouter
+
+        assert isinstance(router, APIRouter)
+
+        @router.get(
+            "/tools",
+            name="Список инструментов LLM",
+        )
+        def get_tools() -> list[dict[str, Any]]:
+            """
+            Возвращает описания доступных LLM инструментов в OpenAI-подобном формате.
+            """
+            return [convert_to_openai_tool(tool) for tool in self._tools]
