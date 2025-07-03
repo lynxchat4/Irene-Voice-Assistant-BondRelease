@@ -6,8 +6,10 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import MessagesState
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
+from openai import BaseModel
 
 from irene import VAContext, VAApiExt, construct_context
 from irene.plugin_loader.abc import PluginManager, OperationStep
@@ -24,6 +26,7 @@ _DEFAULT_SYSTEM_PROMPT = """
 
 
 class Config(TypedDict):
+    enabled: bool
     llm_settings: dict[str, Any]
     system_prompt: str
     debug: bool
@@ -36,6 +39,7 @@ class LLMFallbackContextPlugin(MagicPlugin):
     _logger = getLogger(name)
 
     config: Config = {
+        "enabled": True,
         "llm_settings": {
             "type": "ollama",
         },
@@ -46,6 +50,15 @@ class LLMFallbackContextPlugin(MagicPlugin):
     def __init__(self):
         super().__init__()
         self._cp = InMemorySaver()
+
+    def init(self, pm: PluginManager, *_args, **_kwargs):
+        self._tools = self._load_tools(pm)
+
+        # На некоторых версиях pydantic вызов model_json_schema() падает и роняет агента позже,
+        # так что вызываем его заранее тут.
+        for tool in self._tools:
+            if isinstance(tool.tool_call_schema, type) and issubclass(tool.tool_call_schema, BaseModel):
+                tool.tool_call_schema.model_json_schema()
 
     def _tools_from_step(self, step: OperationStep) -> list[BaseTool]:
         if isinstance(step.step, BaseTool):
@@ -70,12 +83,13 @@ class LLMFallbackContextPlugin(MagicPlugin):
 
         return llm
 
-    def _create_graph(self, pm: PluginManager) -> CompiledStateGraph:
+    def _create_graph(self, pm: PluginManager) -> CompiledStateGraph[MessagesState]:
         return create_react_agent(
             model=self._get_llm(pm),
             tools=self._load_tools(pm),
             prompt=self.config['system_prompt'],
             checkpointer=self._cp,
+            debug=self.config['debug'],
         )
 
     @staticmethod
@@ -90,7 +104,7 @@ class LLMFallbackContextPlugin(MagicPlugin):
 
     def _make_chat_context(self, pm: PluginManager) -> VAContext:
         def chat(va: VAApiExt, initial_msg: str):
-            graph: CompiledStateGraph = self._create_graph(pm)  # TODO: Cache
+            graph = self._create_graph(pm)  # TODO: Cache
 
             def _response_from_state(s: dict[str, Any]) -> str:
                 message = s['messages'][-1]
@@ -118,8 +132,10 @@ class LLMFallbackContextPlugin(MagicPlugin):
     def create_root_context(
             self,
             nxt: Callable,
-            _prev: VAContext,
+            ctx: VAContext,
             pm: PluginManager,
             *args, **kwargs
     ):
-        return nxt(self._make_chat_context(pm), pm, *args, **kwargs)
+        if self.config['enabled']:
+            ctx = self._make_chat_context(pm)
+        return nxt(ctx, pm, *args, **kwargs)

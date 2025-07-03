@@ -5,7 +5,7 @@ from langchain_core.language_models import BaseChatModel
 name = 'llm_ollama'
 version = '0.1.0'
 
-config = {
+config: dict[str, Any] = {
     'model': 'qwen2.5:14b',
 }
 

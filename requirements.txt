@@ -5,7 +5,7 @@ termcolor~=1.1.0
 sounddevice~=0.4.4
 soundfile~=0.12.1
 pyautogui~=0.9.53
-requests~=2.28.1
+requests~=2.32.4
 numpy
 audioplayer~=0.6
 python-dateutil~=2.6.0
@@ -16,8 +16,8 @@ pyTelegramBotAPI~=4.7.1
 
 uvicorn~=0.18.3
 uvicorn[standard]~=0.18.3
-fastapi~=0.81.0
-starlette~=0.19.1
+fastapi~=0.115.14
+starlette~=0.46.2
 websockets~=10.3
 
 torch~=1.12.1
