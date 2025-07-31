@@ -7,6 +7,7 @@ from functools import cache
 from hashlib import md5
 from logging import getLogger
 from os.path import basename, dirname
+from string import Template
 from typing import Optional, Any, TypedDict, Iterable
 from urllib.parse import urlparse
 
@@ -20,7 +21,7 @@ from irene.plugin_loader.utils.snapshot_hash import snapshot_hash
 from irene.utils.metadata import MetadataMapping
 
 name = 'plugin_tts_silero_v3'
-version = '0.3.1'
+version = '0.4.0'
 
 
 class _Config(TypedDict):
@@ -143,6 +144,8 @@ def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
     model = _load_model(model_url)
 
     full_settings = instance_config.get('silero_settings', {})
+    ssml_template = instance_config.get('ssml_template')
+    ssml_template_compiled = Template(ssml_template) if ssml_template else None
 
     _warmup_model(model, full_settings)
 
@@ -155,18 +158,30 @@ def _make_tts(instance_config: dict[str, Any]) -> Optional[FileWritingTTS]:
             # TODO: Это не будет работать с другими языками кроме русского. Нужно более универсальное решение.
             text = all_num_to_text.all_num_to_text(text)
 
-            _logger.debug("Синтезирую фразу: %s", text)
+            text_kwargs = {}
+
+            if ssml_template_compiled is not None:
+                text_kwargs['ssml_text'] = ssml_template_compiled.safe_substitute(text=text)
+            else:
+                text_kwargs['text'] = text
+
+            _logger.debug("Синтезирую фразу: %s", text_kwargs)
 
             model.save_wav(
                 audio_path=file.get_full_path(),
-                text=text,
+                **text_kwargs,
                 **full_settings,
             )
 
             return file
 
         def get_settings_hash(self) -> str:
-            return str(snapshot_hash(full_settings) ^ snapshot_hash(model_url))
+            h = snapshot_hash(full_settings) ^ snapshot_hash(model_url)
+
+            if ssml_template:
+                h ^= snapshot_hash(ssml_template)
+
+            return str(h)
 
         @property
         def meta(self) -> MetadataMapping:

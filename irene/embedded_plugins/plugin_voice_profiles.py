@@ -132,6 +132,7 @@ config: dict[str, Any] = {
                     "put_accent": True,
                     "put_yo": True,
                 },
+                "ssml_template": '<speak>$text</speak>',
                 "warmup_iterations": 4,
                 "warmup_phrase": "В недрах тундры выдры в гетрах тырят в вёдра ядра кедров",
                 "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
